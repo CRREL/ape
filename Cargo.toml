@@ -3,9 +3,12 @@ name = "ape"
 version = "0.1.0"
 authors = ["Pete Gadomski <pete.gadomski@gmail.com>"]
 
+
 [dependencies]
-bincode = "*"
+bincode = "0.9"
 clap = { version = "2.27", features = ["yaml"] }
-scanlib = { git = "https://github.com/gadomski/rivlib-rs" }
 serde = "1.0"
 serde_derive = "1.0"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+scanlib = { git = "https://github.com/gadomski/rivlib-rs" }
