@@ -6,8 +6,10 @@ extern crate scanlib;
 #[macro_use]
 extern crate serde_derive;
 
+#[allow(unused_variables)]
 fn main() {
     use clap::App;
+    #[cfg(target_os = "linux")] linux::incl(matches);
 
     let yaml = load_yaml!("cli.yml");
     let matches = App::from_yaml(yaml).get_matches();
@@ -26,16 +28,6 @@ struct Inclination {
     pitch: f32,
 }
 
-impl From<scanlib::Inclination> for Inclination {
-    fn from(i: scanlib::Inclination) -> Inclination {
-        Inclination {
-            time: i.time,
-            roll: i.roll as f32,
-            pitch: i.pitch as f32,
-        }
-    }
-}
-
 #[cfg(target_os = "linux")]
 mod linux {
     use bincode;
@@ -50,6 +42,16 @@ mod linux {
 
         let inclinations = read_inclinations(infile, matches.is_present("sync-to-pps"));
         write_inclinations(inclinations, outfile);
+    }
+
+    impl From<scanlib::Inclination> for Inclination {
+        fn from(i: scanlib::Inclination) -> Inclination {
+            Inclination {
+                time: i.time,
+                roll: i.roll as f32,
+                pitch: i.pitch as f32,
+            }
+        }
     }
 
     fn read_inclinations<P: AsRef<Path>>(path: P, sync_to_pps: bool) -> Vec<Inclination> {
