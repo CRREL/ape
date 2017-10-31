@@ -1,0 +1,18 @@
+name: The Atlas Processing Engine (ape)
+author: Pete Gadomski <pete@gadom.ski>
+subcommands:
+    - incl:
+        about: Extracts inclination data from an rxp file.
+        args:
+            - INFILE:
+                help: The rxp file.
+                required: true
+                index: 1
+            - OUTFILE:
+                help: The inclination file.
+                required: true
+                index: 2
+            - sync-to-pps:
+                long: sync-to-pps
+                help: Does the input file have to be sync'd to pps?
+

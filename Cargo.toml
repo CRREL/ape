@@ -4,3 +4,8 @@ version = "0.1.0"
 authors = ["Pete Gadomski <pete.gadomski@gmail.com>"]
 
 [dependencies]
+bincode = "*"
+clap = { version = "2.27", features = ["yaml"] }
+scanlib = { git = "https://github.com/gadomski/rivlib-rs" }
+serde = "1.0"
+serde_derive = "1.0"
