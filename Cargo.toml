@@ -1,0 +1,6 @@
+[package]
+name = "ape"
+version = "0.1.0"
+authors = ["Pete Gadomski <pete.gadomski@gmail.com>"]
+
+[dependencies]
