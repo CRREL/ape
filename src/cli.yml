@@ -16,3 +16,10 @@ subcommands:
                 long: sync-to-pps
                 help: Does the input file have to be sync'd to pps?
 
+    - incl-stats:
+        about: Prints statistics about an inclination file in json format.
+        args:
+            - INFILE:
+                help: The inclination file.
+                required: true
+                index: 1
