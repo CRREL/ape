@@ -7,7 +7,7 @@ extern crate lazy_static;
 extern crate serde_json;
 extern crate walkdir;
 
-use ape::incl::Stats;
+use ape::incl::{Inclination, Stats};
 use ape::utils;
 use chrono::{DateTime, TimeZone, Utc};
 use clap::ArgMatches;
@@ -29,6 +29,8 @@ fn main() {
             #[cfg(target_os = "linux")] incl_extract(matches);
             #[cfg(not(target_os = "linux"))]
             panic!("ape-incl-extract not supported on non-linux systems");
+        } else if let Some(matches) = matches.subcommand_matches("cat") {
+            incl_cat(matches);
         } else if let Some(matches) = matches.subcommand_matches("stats") {
             incl_stats(matches);
         } else if let Some(matches) = matches.subcommand_matches("timeseries") {
@@ -43,6 +45,19 @@ pub fn incl_extract(matches: &ArgMatches) {
     let infile = matches.value_of("INFILE").unwrap();
     let outfile = matches.value_of("OUTFILE").unwrap();
     incl::linux::extract(infile, outfile, matches.is_present("sync-to-pps")).unwrap()
+}
+
+pub fn incl_cat(matches: &ArgMatches) {
+    let inclinations = Inclination::vec_from_path(matches.value_of("INFILE").unwrap()).unwrap();
+    println!("time,roll,pitch");
+    for inclination in inclinations {
+        println!(
+            "{},{},{}",
+            inclination.time,
+            inclination.roll,
+            inclination.pitch
+        );
+    }
 }
 
 pub fn incl_stats(matches: &ArgMatches) {

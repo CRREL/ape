@@ -18,7 +18,13 @@ subcommands:
                     - sync-to-pps:
                         long: sync-to-pps
                         help: Does the input file have to be sync'd to pps?
-
+            - cat:
+                help: Print all inclination values in one file.
+                args:
+                    - INFILE:
+                        help: The inclination file.
+                        required: true
+                        index: 1
             - stats:
                 help: Prints statistics about an inclination file in json format.
                 args:

@@ -5,10 +5,10 @@ use std::iter::FromIterator;
 use std::path::Path;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-struct Inclination {
-    time: f64,
-    roll: f32,
-    pitch: f32,
+pub struct Inclination {
+    pub time: f64,
+    pub roll: f32,
+    pub pitch: f32,
 }
 
 #[derive(Debug, Default, Serialize)]
@@ -24,7 +24,7 @@ pub struct Metrics {
 }
 
 impl Inclination {
-    fn from_path<P: AsRef<Path>>(path: P) -> Result<Vec<Inclination>> {
+    pub fn vec_from_path<P: AsRef<Path>>(path: P) -> Result<Vec<Inclination>> {
         let mut file = File::open(path)?;
         bincode::deserialize_from(&mut file, Infinite).map_err(Error::from)
     }
@@ -32,7 +32,7 @@ impl Inclination {
 
 impl Stats {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Stats> {
-        let inclinations = Inclination::from_path(path)?;
+        let inclinations = Inclination::vec_from_path(path)?;
         Ok(Stats {
             roll: inclinations.iter().map(|i| i.roll).collect(),
             pitch: inclinations.iter().map(|i| i.pitch).collect(),
