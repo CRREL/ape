@@ -5,7 +5,7 @@ subcommands:
         help: Extract and manipulate rxp inclination data.
         subcommands:
             - extract:
-                about: Extracts inclination data from an rxp file.
+                help: Extracts inclination data from an rxp file.
                 args:
                     - INFILE:
                         help: The rxp file.
@@ -20,14 +20,14 @@ subcommands:
                         help: Does the input file have to be sync'd to pps?
 
             - stats:
-                about: Prints statistics about an inclination file in json format.
+                help: Prints statistics about an inclination file in json format.
                 args:
                     - INFILE:
                         help: The inclination file.
                         required: true
                         index: 1
             - timeseries:
-                about: Prints all the inclinations in a directory as one long timeseries.
+                help: Prints all the inclinations in a directory as one long timeseries.
                 args:
                     - DIRECTORY:
                         help: The inclination directory.
