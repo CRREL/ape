@@ -1,6 +1,7 @@
 use {Error, Result};
 use bincode::{self, Infinite};
 use std::fs::File;
+use std::iter::FromIterator;
 use std::path::Path;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
@@ -33,14 +34,14 @@ impl Stats {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Stats> {
         let inclinations = Inclination::from_path(path)?;
         Ok(Stats {
-            roll: Metrics::new(inclinations.iter().map(|i| i.roll)),
-            pitch: Metrics::new(inclinations.iter().map(|i| i.pitch)),
+            roll: inclinations.iter().map(|i| i.roll).collect(),
+            pitch: inclinations.iter().map(|i| i.pitch).collect(),
         })
     }
 }
 
-impl Metrics {
-    fn new<I: IntoIterator<Item = f32>>(iter: I) -> Metrics {
+impl FromIterator<f32> for Metrics {
+    fn from_iter<I: IntoIterator<Item = f32>>(iter: I) -> Metrics {
         let mut sum = 0f64;
         let mut sum2 = 0f64;
         let mut count = 0.;
