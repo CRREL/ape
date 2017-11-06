@@ -27,11 +27,7 @@ quick_error! {
             cause(err)
         }
         MissingFileStem {}
-        #[cfg(target_os = "linux")]
-        Scanlib(err: scanlib::Error) {
-            from()
-            cause(err)
-        }
+        Scanlib(msg: String) {}
     }
 }
 

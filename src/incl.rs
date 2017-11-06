@@ -81,7 +81,8 @@ pub mod linux {
         P: AsRef<Path>,
         Q: AsRef<Path>,
     {
-        let inclinations: Vec<Inclination> = scanlib::inclinations_from_path(infile, sync_to_pps)?
+        let inclinations: Vec<Inclination> = scanlib::inclinations_from_path(infile, sync_to_pps)
+            .map_err(|err| Error::Scanlib(err.to_string()))?
             .into_iter()
             .map(|i| i.into())
             .collect();
