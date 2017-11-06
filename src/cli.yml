@@ -2,24 +2,34 @@ name: The Atlas Processing Engine (ape)
 author: Pete Gadomski <pete@gadom.ski>
 subcommands:
     - incl:
-        about: Extracts inclination data from an rxp file.
-        args:
-            - INFILE:
-                help: The rxp file.
-                required: true
-                index: 1
-            - OUTFILE:
-                help: The inclination file.
-                required: true
-                index: 2
-            - sync-to-pps:
-                long: sync-to-pps
-                help: Does the input file have to be sync'd to pps?
+        help: Extract and manipulate rxp inclination data.
+        subcommands:
+            - extract:
+                about: Extracts inclination data from an rxp file.
+                args:
+                    - INFILE:
+                        help: The rxp file.
+                        required: true
+                        index: 1
+                    - OUTFILE:
+                        help: The inclination file.
+                        required: true
+                        index: 2
+                    - sync-to-pps:
+                        long: sync-to-pps
+                        help: Does the input file have to be sync'd to pps?
 
-    - incl-stats:
-        about: Prints statistics about an inclination file in json format.
-        args:
-            - INFILE:
-                help: The inclination file.
-                required: true
-                index: 1
+            - stats:
+                about: Prints statistics about an inclination file in json format.
+                args:
+                    - INFILE:
+                        help: The inclination file.
+                        required: true
+                        index: 1
+            - timeseries:
+                about: Prints all the inclinations in a directory as one long timeseries.
+                args:
+                    - DIRECTORY:
+                        help: The inclination directory.
+                        required: true
+                        index: 1
