@@ -47,7 +47,7 @@ pub fn incl_extract(matches: &ArgMatches) {
 
 pub fn incl_stats(matches: &ArgMatches) {
     let stats = Stats::from_path(matches.value_of("INFILE").unwrap()).unwrap();
-    println!("{}", serde_json::to_string(&stats).unwrap());
+    println!("{}", serde_json::to_string_pretty(&stats).unwrap());
 }
 
 pub fn incl_timeseries(matches: &ArgMatches) {
