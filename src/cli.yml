@@ -1,11 +1,26 @@
 name: The Atlas Processing Engine (ape)
 author: Pete Gadomski <pete@gadom.ski>
 subcommands:
+    - cpd:
+        about: Run cpd on two las files, saving the resulting transform to a third file.
+        args:
+            - FIXED:
+                help: The file that isn't moving.
+                required: true
+                index: 1
+            - MOVING:
+                help: The file that is moving.
+                required: true
+                index: 2
+            - OUTPUT:
+                help: The location of the resultant translation matrix (in .dat form).
+                required: true
+                index: 3
     - incl:
-        help: Extract and manipulate rxp inclination data.
+        about: Extract and manipulate rxp inclination data.
         subcommands:
             - extract:
-                help: Extracts inclination data from an rxp file.
+                about: Extracts inclination data from an rxp file.
                 args:
                     - INFILE:
                         help: The rxp file.
@@ -19,21 +34,21 @@ subcommands:
                         long: sync-to-pps
                         help: Does the input file have to be sync'd to pps?
             - cat:
-                help: Print all inclination values in one file.
+                about: Print all inclination values in one file.
                 args:
                     - INFILE:
                         help: The inclination file.
                         required: true
                         index: 1
             - stats:
-                help: Prints statistics about an inclination file in json format.
+                about: Prints statistics about an inclination file in json format.
                 args:
                     - INFILE:
                         help: The inclination file.
                         required: true
                         index: 1
             - timeseries:
-                help: Prints all the inclinations in a directory as one long timeseries.
+                about: Prints all the inclinations in a directory as one long timeseries.
                 args:
                     - DIRECTORY:
                         help: The inclination directory.

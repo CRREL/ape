@@ -2,6 +2,7 @@ extern crate ape;
 extern crate chrono;
 #[macro_use]
 extern crate clap;
+extern crate cpd;
 #[macro_use]
 extern crate lazy_static;
 extern crate serde_json;
@@ -24,7 +25,9 @@ fn main() {
     let yaml = load_yaml!("cli.yml");
     let matches = App::from_yaml(yaml).get_matches();
 
-    if let Some(matches) = matches.subcommand_matches("incl") {
+    if let Some(matches) = matches.subcommand_matches("cpd") {
+        cpd(matches);
+    } else if let Some(matches) = matches.subcommand_matches("incl") {
         if let Some(matches) = matches.subcommand_matches("extract") {
             #[cfg(target_os = "linux")] incl_extract(matches);
             #[cfg(not(target_os = "linux"))]
@@ -36,6 +39,36 @@ fn main() {
         } else if let Some(matches) = matches.subcommand_matches("timeseries") {
             incl_timeseries(matches);
         }
+    }
+}
+
+pub fn cpd(matches: &ArgMatches) {
+    use std::fs::File;
+    use cpd::{Normalize, Runner, utils};
+    use std::io::Write;
+
+    let fixed = utils::matrix_from_las_path(matches.value_of("FIXED").unwrap()).unwrap();
+    let moving = utils::matrix_from_las_path(matches.value_of("MOVING").unwrap()).unwrap();
+    let outfile = matches.value_of("OUTFILE").unwrap();
+    let rigid = Runner::new()
+        .normalize(Normalize::SameScale)
+        .rigid()
+        .scale(false)
+        .allow_reflections(false);
+    let run = rigid.register(&fixed, &moving).unwrap();
+    if run.converged {
+        let rotation = run.transform.rotation;
+        let translation = run.transform.translation;
+        let mut outfile = File::create(outfile).unwrap();
+        for r in 0..2 {
+            for c in 0..2 {
+                write!(outfile, "{}", rotation[(r, c)]).unwrap();
+            }
+            writeln!(outfile, "{}", translation[r]).unwrap();
+        }
+        writeln!(outfile, "0.0 0.0 0.0 1.0").unwrap();
+    } else {
+        panic!("cpd did not converge!");
     }
 }
 
