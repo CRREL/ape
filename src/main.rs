@@ -86,7 +86,7 @@ fn magic_bucket_config(matches: &ArgMatches) {
         let mut matrix = String::new();
         let mut file = File::open(matches.value_of(name).unwrap()).unwrap();
         file.read_to_string(&mut matrix).unwrap();
-        matrix
+        matrix.replace("\n", " ").replace("\r", " ")
     };
 
     let sop = read("SOP");
@@ -106,6 +106,9 @@ fn magic_bucket_config(matches: &ArgMatches) {
         {
             "type": "filters.transformation",
             "matrix": pop,
+        },
+        {
+            "type": "filters.outlier",
         },
         {
             "type": "filters.colorinterp",
