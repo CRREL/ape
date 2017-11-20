@@ -12,7 +12,7 @@ subcommands:
                 help: The file that is moving.
                 required: true
                 index: 2
-            - OUTPUT:
+            - OUTFILE:
                 help: The location of the resultant translation matrix (in .dat form).
                 required: true
                 index: 3

@@ -63,13 +63,13 @@ pub fn cpd(matches: &ArgMatches) {
         let rotation = run.transform.rotation;
         let translation = run.transform.translation;
         let mut outfile = File::create(outfile).unwrap();
-        for r in 0..2 {
-            for c in 0..2 {
-                write!(outfile, "{}", rotation[(r, c)]).unwrap();
+        for r in 0..3 {
+            for c in 0..3 {
+                write!(outfile, "{} ", rotation[(r, c)]).unwrap();
             }
             writeln!(outfile, "{}", translation[r]).unwrap();
         }
-        writeln!(outfile, "0.0 0.0 0.0 1.0").unwrap();
+        writeln!(outfile, "0 0 0 1").unwrap();
     } else {
         panic!("cpd did not converge!");
     }
