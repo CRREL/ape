@@ -6,6 +6,7 @@ extern crate cpd;
 extern crate env_logger;
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
 extern crate serde_json;
 extern crate walkdir;
 
@@ -30,6 +31,8 @@ fn main() {
 
     if let Some(matches) = matches.subcommand_matches("cpd") {
         cpd(matches);
+    } else if let Some(matches) = matches.subcommand_matches("magic-bucket-config") {
+        magic_bucket_config(matches);
     } else if let Some(matches) = matches.subcommand_matches("incl") {
         if let Some(matches) = matches.subcommand_matches("extract") {
             #[cfg(target_os = "linux")] incl_extract(matches);
@@ -45,7 +48,7 @@ fn main() {
     }
 }
 
-pub fn cpd(matches: &ArgMatches) {
+fn cpd(matches: &ArgMatches) {
     use std::fs::File;
     use cpd::{Normalize, Runner, utils};
     use std::io::Write;
@@ -75,15 +78,67 @@ pub fn cpd(matches: &ArgMatches) {
     }
 }
 
+fn magic_bucket_config(matches: &ArgMatches) {
+    use std::fs::File;
+    use std::io::Read;
+
+    let read = |name| {
+        let mut matrix = String::new();
+        let mut file = File::open(matches.value_of(name).unwrap()).unwrap();
+        file.read_to_string(&mut matrix).unwrap();
+        matrix
+    };
+
+    let sop = read("SOP");
+    let adjustment = read("ADJUSTMENT");
+    let pop = read("POP");
+
+    let config = json!({
+        "filters": [
+        {
+            "type": "filters.transformation",
+            "matrix": sop,
+        },
+        {
+            "type": "filters.transformation",
+            "matrix": adjustment,
+        },
+        {
+            "type": "filters.transformation",
+            "matrix": pop,
+        },
+        {
+            "type": "filters.colorinterp",
+            "ramp": "pestel_shades",
+            "minimum": 200,
+            "maximum": 600,
+            "mad": true,
+            "k": 1.8,
+        }
+        ],
+        "output_ext": ".laz",
+        "args": [
+            "--writers.las.scale_x=0.0025",
+            "--writers.las.scale_y=0.0025",
+            "--writers.las.scale_z=0.0025",
+            "--writers.las.offset_x=auto",
+            "--writers.las.offset_y=auto",
+            "--writers.las.offset_z=auto",
+            "--writers.las.a_srs=EPSG:32624+5773",
+        ]
+    });
+    println!("{}", serde_json::to_string_pretty(&config).unwrap());
+}
+
 #[cfg(target_os = "linux")]
-pub fn incl_extract(matches: &ArgMatches) {
+fn incl_extract(matches: &ArgMatches) {
     use ape::incl;
     let infile = matches.value_of("INFILE").unwrap();
     let outfile = matches.value_of("OUTFILE").unwrap();
     incl::linux::extract(infile, outfile, matches.is_present("sync-to-pps")).unwrap()
 }
 
-pub fn incl_cat(matches: &ArgMatches) {
+fn incl_cat(matches: &ArgMatches) {
     let inclinations = Inclination::vec_from_path(matches.value_of("INFILE").unwrap()).unwrap();
     println!("time,roll,pitch");
     for inclination in inclinations {
@@ -96,12 +151,12 @@ pub fn incl_cat(matches: &ArgMatches) {
     }
 }
 
-pub fn incl_stats(matches: &ArgMatches) {
+fn incl_stats(matches: &ArgMatches) {
     let stats = Stats::from_path(matches.value_of("INFILE").unwrap()).unwrap();
     println!("{}", serde_json::to_string_pretty(&stats).unwrap());
 }
 
-pub fn incl_timeseries(matches: &ArgMatches) {
+fn incl_timeseries(matches: &ArgMatches) {
     use chrono::{Datelike, Timelike};
     let directory = matches.value_of("DIRECTORY").unwrap();
     println!("ordinal,year,hour,name,mean,stddev");
