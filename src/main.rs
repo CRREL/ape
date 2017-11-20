@@ -3,6 +3,7 @@ extern crate chrono;
 #[macro_use]
 extern crate clap;
 extern crate cpd;
+extern crate env_logger;
 #[macro_use]
 extern crate lazy_static;
 extern crate serde_json;
@@ -20,6 +21,8 @@ lazy_static! {
 
 #[allow(unused_variables)]
 fn main() {
+    env_logger::init().unwrap();
+
     use clap::App;
 
     let yaml = load_yaml!("cli.yml");

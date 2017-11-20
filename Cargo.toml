@@ -9,6 +9,7 @@ bincode = "0.9"
 chrono = "0.4"
 clap = { version = "2.27", features = ["yaml"] }
 cpd = { git = "https://github.com/gadomski/cpd-rs" }
+env_logger = "0.4"
 failure = "0.1"
 failure_derive = "0.1"
 lazy_static = "0.2"
