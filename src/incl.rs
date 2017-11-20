@@ -1,5 +1,5 @@
-use {Error, Result};
 use bincode::{self, Infinite};
+use failure::Error;
 use std::fs::File;
 use std::iter::FromIterator;
 use std::path::Path;
@@ -24,14 +24,14 @@ pub struct Metrics {
 }
 
 impl Inclination {
-    pub fn vec_from_path<P: AsRef<Path>>(path: P) -> Result<Vec<Inclination>> {
+    pub fn vec_from_path<P: AsRef<Path>>(path: P) -> Result<Vec<Inclination>, Error> {
         let mut file = File::open(path)?;
         bincode::deserialize_from(&mut file, Infinite).map_err(Error::from)
     }
 }
 
 impl Stats {
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Stats> {
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Stats, Error> {
         let inclinations = Inclination::vec_from_path(path)?;
         Ok(Stats {
             roll: inclinations.iter().map(|i| i.roll).collect(),
