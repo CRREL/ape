@@ -126,7 +126,7 @@ fn magic_bucket_config(matches: &ArgMatches) {
                 "type": "filters.colorinterp",
                 "ramp": "pestel_shades",
                 "minimum": 0,
-                "maximum": 250,
+                "maximum": 175,
             }
         ],
         "output_ext": ".laz",
