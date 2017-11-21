@@ -1,5 +1,6 @@
 extern crate bincode;
 extern crate chrono;
+extern crate cpd;
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;

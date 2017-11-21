@@ -1,8 +1,11 @@
 use chrono::{DateTime, Utc};
+use cpd::{Matrix, Normalize, Runner, U3};
 use failure::Error;
 use las::{Point, Reader};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+
+const GRID_SIZE: i64 = 100;
 
 #[derive(Debug, Fail)]
 #[fail(display = "No moving path for path: {}", _0)]
@@ -12,8 +15,28 @@ pub fn velocities<P: AsRef<Path>>(path: P) -> Result<Vec<Velocity>, Error> {
     let fixed = Grid::from_path(&path)?;
     let moving_path = moving_path(path)?;
     let moving = Grid::from_path(moving_path)?;
-    println!("{}", fixed.map.len());
-    println!("{}", moving.map.len());
+    let rigid = Runner::new()
+        .normalize(Normalize::SameScale)
+        .rigid()
+        .scale(false);
+    for (&(r, c), fixed) in &fixed.map {
+        if let Some(moving) = moving.map.get(&(r, c)) {
+            if fixed.len() < 1000 || moving.len() < 1000 {
+                continue;
+            }
+            println!(
+                "Running grid cell ({}, {}) with {} fixed points and {} moving points",
+                r,
+                c,
+                fixed.len(),
+                moving.len()
+            );
+            let fixed = points_to_matrix(fixed);
+            let moving = points_to_matrix(moving);
+            let run = rigid.register(&fixed, &moving);
+            unimplemented!()
+        }
+    }
     unimplemented!()
 }
 
@@ -21,7 +44,7 @@ pub fn velocities<P: AsRef<Path>>(path: P) -> Result<Vec<Velocity>, Error> {
 pub struct Velocity {}
 
 struct Grid {
-    map: HashMap<(i16, i16), Vec<Point>>,
+    map: HashMap<(i64, i64), Vec<Point>>,
 }
 
 impl NoMovingPath {
@@ -35,8 +58,8 @@ impl Grid {
         let mut map = HashMap::new();
         for point in Reader::from_path(path)?.points() {
             let point = point?;
-            let r = point.x as i16 / 100;
-            let c = point.y as i16 / 100;
+            let r = point.x as i64 / GRID_SIZE;
+            let c = point.y as i64 / GRID_SIZE;
             map.entry((r, c)).or_insert_with(Vec::new).push(point);
         }
         Ok(Grid { map: map })
@@ -77,4 +100,14 @@ fn is_the_moving_path<P: AsRef<Path>>(fixed: DateTime<Utc>, path: P) -> bool {
             duration > Duration::hours(0) && duration < Duration::hours(7)
         })
         .unwrap_or(false)
+}
+
+fn points_to_matrix(points: &Vec<Point>) -> Matrix<U3> {
+    let mut matrix = Matrix::<U3>::zeros(points.len());
+    for (i, point) in points.iter().enumerate() {
+        matrix[(i, 0)] = point.x;
+        matrix[(i, 1)] = point.y;
+        matrix[(i, 2)] = point.z;
+    }
+    matrix
 }
