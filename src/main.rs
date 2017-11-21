@@ -35,9 +35,9 @@ fn main() {
         magic_bucket_config(matches);
     } else if let Some(matches) = matches.subcommand_matches("incl") {
         if let Some(matches) = matches.subcommand_matches("extract") {
-            #[cfg(target_os = "linux")] incl_extract(matches);
-            #[cfg(not(target_os = "linux"))]
-            panic!("ape-incl-extract not supported on non-linux systems");
+            #[cfg(feature = "scanlib")] incl_extract(matches);
+            #[cfg(not(feature = "scanlib"))]
+            panic!("ape-incl-extract not supported without scanlib");
         } else if let Some(matches) = matches.subcommand_matches("cat") {
             incl_cat(matches);
         } else if let Some(matches) = matches.subcommand_matches("stats") {
@@ -148,7 +148,7 @@ fn magic_bucket_config(matches: &ArgMatches) {
     println!("{}", serde_json::to_string_pretty(&config).unwrap());
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(feature = "scanlib")]
 fn incl_extract(matches: &ArgMatches) {
     use ape::incl;
     let infile = matches.value_of("INFILE").unwrap();
