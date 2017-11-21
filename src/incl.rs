@@ -57,7 +57,7 @@ impl FromIterator<f32> for Metrics {
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(feature = "scanlib")]
 pub mod linux {
     use super::Inclination;
     use {Error, Result};
