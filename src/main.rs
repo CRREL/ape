@@ -33,6 +33,8 @@ fn main() {
         cpd(matches);
     } else if let Some(matches) = matches.subcommand_matches("magic-bucket-config") {
         magic_bucket_config(matches);
+    } else if let Some(matches) = matches.subcommand_matches("velocities") {
+        velocities(matches);
     } else if let Some(matches) = matches.subcommand_matches("incl") {
         if let Some(matches) = matches.subcommand_matches("extract") {
             #[cfg(feature = "scanlib")] incl_extract(matches);
@@ -76,6 +78,20 @@ fn cpd(matches: &ArgMatches) {
     } else {
         panic!("cpd did not converge!");
     }
+}
+
+fn velocities(matches: &ArgMatches) {
+    use std::fs::File;
+    use std::io::Write;
+
+    let infile = matches.value_of("INFILE").unwrap();
+    let velocities = ape::velocities(infile).unwrap();
+    let mut outfile = File::create(matches.value_of("OUTFILE").unwrap()).unwrap();
+    writeln!(
+        outfile,
+        "{}",
+        serde_json::to_string_pretty(&velocities).unwrap()
+    ).unwrap();
 }
 
 fn magic_bucket_config(matches: &ArgMatches) {
