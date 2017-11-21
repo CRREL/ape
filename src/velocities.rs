@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use failure::Error;
-use las::Reader;
+use las::{Point, Reader};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Fail)]
@@ -8,19 +9,37 @@ use std::path::{Path, PathBuf};
 struct NoMovingPath(String);
 
 pub fn velocities<P: AsRef<Path>>(path: P) -> Result<Vec<Velocity>, Error> {
-    let moving_path = moving_path(&path)?;
-    println!("{}, {}", path.as_ref().display(), moving_path.display());
-    let _fixed_las = Reader::from_path(path)?;
-    let _moving_las = Reader::from_path(moving_path)?;
+    let fixed = Grid::from_path(&path)?;
+    let moving_path = moving_path(path)?;
+    let moving = Grid::from_path(moving_path)?;
+    println!("{}", fixed.map.len());
+    println!("{}", moving.map.len());
     unimplemented!()
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Velocity {}
 
+struct Grid {
+    map: HashMap<(i16, i16), Vec<Point>>,
+}
+
 impl NoMovingPath {
     fn new<P: AsRef<Path>>(path: P) -> NoMovingPath {
         NoMovingPath(path.as_ref().display().to_string())
+    }
+}
+
+impl Grid {
+    fn from_path<P: AsRef<Path>>(path: P) -> Result<Grid, Error> {
+        let mut map = HashMap::new();
+        for point in Reader::from_path(path)?.points() {
+            let point = point?;
+            let r = point.x as i16 / 100;
+            let c = point.y as i16 / 100;
+            map.entry((r, c)).or_insert_with(Vec::new).push(point);
+        }
+        Ok(Grid { map: map })
     }
 }
 
