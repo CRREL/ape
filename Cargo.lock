@@ -9,6 +9,7 @@ dependencies = [
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure_derive 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "las 0.5.2 (git+https://github.com/gadomski/las-rs)",
  "lazy_static 0.2.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "scanlib 0.1.0 (git+https://github.com/gadomski/rivlib-rs)",
  "serde 1.0.17 (registry+https://github.com/rust-lang/crates.io-index)",
