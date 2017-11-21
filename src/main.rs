@@ -142,6 +142,7 @@ fn magic_bucket_config(matches: &ArgMatches) {
             "--writers.las.offset_y=auto",
             "--writers.las.offset_z=auto",
             "--writers.las.a_srs=EPSG:32624+5773",
+            "--writers.las.pdal_metadata=true",
         ]
     });
     println!("{}", serde_json::to_string_pretty(&config).unwrap());
