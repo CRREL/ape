@@ -98,8 +98,7 @@ fn magic_bucket_config(matches: &ArgMatches) {
     let pop = read("POP");
 
     let config = json!({
-        "filters": {
-            "pipeline": [
+        "filters": [
             {
                 "type": "filters.transformation",
                 "matrix": sop,
@@ -126,13 +125,10 @@ fn magic_bucket_config(matches: &ArgMatches) {
             {
                 "type": "filters.colorinterp",
                 "ramp": "pestel_shades",
-                "minimum": 200,
-                "maximum": 600,
-                "mad": true,
-                "k": 1.8,
+                "minimum": 0,
+                "maximum": 250,
             }
-            ]
-        },
+        ],
         "output_ext": ".laz",
         "args": [
             "--writers.las.scale_x=0.0025",
@@ -142,7 +138,6 @@ fn magic_bucket_config(matches: &ArgMatches) {
             "--writers.las.offset_y=auto",
             "--writers.las.offset_z=auto",
             "--writers.las.a_srs=EPSG:32624+5773",
-            "--writers.las.pdal_metadata=true",
         ]
     });
     println!("{}", serde_json::to_string_pretty(&config).unwrap());
