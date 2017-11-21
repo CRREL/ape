@@ -98,39 +98,41 @@ fn magic_bucket_config(matches: &ArgMatches) {
     let pop = read("POP");
 
     let config = json!({
-        "filters": [
-        {
-            "type": "filters.transformation",
-            "matrix": sop,
+        "filters": {
+            "pipeline": [
+            {
+                "type": "filters.transformation",
+                "matrix": sop,
+            },
+            {
+                "type": "filters.transformation",
+                "matrix": adjustment,
+            },
+            {
+                "type": "filters.transformation",
+                "matrix": pop,
+            },
+            {
+                "type": "filters.crop",
+                "polygon": "POLYGON ((535508.04019199998584 7356923.27050799969584, 526852.992188 7363507.49072299990803, 533350.83911099995021 7365850.74902299977839, 541962.312012 7365547.070313, 545282.91503899998497 7360871.8720699995756, 542695.264648 7358447.21875, 537531.614136 7357506.45642099995166, 536543.26751699997112 7357541.5081789996475, 535508.04019199998584 7356923.27050799969584))"
+            },
+            {
+                "type": "filters.range",
+                "limits": "Z[0:250]",
+            },
+            {
+                "type": "filters.outlier",
+            },
+            {
+                "type": "filters.colorinterp",
+                "ramp": "pestel_shades",
+                "minimum": 200,
+                "maximum": 600,
+                "mad": true,
+                "k": 1.8,
+            }
+            ]
         },
-        {
-            "type": "filters.transformation",
-            "matrix": adjustment,
-        },
-        {
-            "type": "filters.transformation",
-            "matrix": pop,
-        },
-        {
-            "type": "filters.crop",
-            "polygon": "POLYGON ((535508.04019199998584 7356923.27050799969584, 526852.992188 7363507.49072299990803, 533350.83911099995021 7365850.74902299977839, 541962.312012 7365547.070313, 545282.91503899998497 7360871.8720699995756, 542695.264648 7358447.21875, 537531.614136 7357506.45642099995166, 536543.26751699997112 7357541.5081789996475, 535508.04019199998584 7356923.27050799969584))"
-        },
-        {
-            "type": "filters.range",
-            "limits": "Z[0:250]",
-        },
-        {
-            "type": "filters.outlier",
-        },
-        {
-            "type": "filters.colorinterp",
-            "ramp": "pestel_shades",
-            "minimum": 200,
-            "maximum": 600,
-            "mad": true,
-            "k": 1.8,
-        }
-        ],
         "output_ext": ".laz",
         "args": [
             "--writers.las.scale_x=0.0025",
