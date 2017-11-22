@@ -6,7 +6,7 @@ use nalgebra::Point3;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-const GRID_SIZE: i64 = 100;
+const GRID_SIZE: i64 = 200;
 const INTERVAL: f64 = 6.;
 
 #[derive(Debug, Fail)]
