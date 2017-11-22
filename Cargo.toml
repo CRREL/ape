@@ -14,6 +14,7 @@ failure = "0.1"
 failure_derive = "0.1"
 las = { git = "https://github.com/gadomski/las-rs" }
 lazy_static = "0.2"
+nalgebra = "*"
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"

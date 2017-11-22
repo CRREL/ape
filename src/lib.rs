@@ -4,6 +4,7 @@ extern crate cpd;
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
+extern crate nalgebra;
 extern crate las;
 #[cfg(feature = "scanlib")]
 extern crate scanlib;

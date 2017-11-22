@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use cpd::{Matrix, Normalize, Runner, U3};
 use failure::Error;
 use las::{Point, Reader};
+use nalgebra::Point3;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -19,6 +20,7 @@ pub fn velocities<P: AsRef<Path>>(path: P) -> Result<Vec<Velocity>, Error> {
         .normalize(Normalize::SameScale)
         .rigid()
         .scale(false);
+    let mut velocities = Vec::new();
     for (&(r, c), fixed) in &fixed.map {
         if let Some(moving) = moving.map.get(&(r, c)) {
             if fixed.len() < 1000 || moving.len() < 1000 {
@@ -33,15 +35,34 @@ pub fn velocities<P: AsRef<Path>>(path: P) -> Result<Vec<Velocity>, Error> {
             );
             let fixed = points_to_matrix(fixed);
             let moving = points_to_matrix(moving);
-            let run = rigid.register(&fixed, &moving);
-            unimplemented!()
+            let run = rigid.register(&fixed, &moving)?;
+            if run.converged {
+                let point = center_of_gravity(&fixed);
+                let moved_point = run.transform.as_transform3() * point;
+                let velocity = (moved_point - point) / 6.;
+                velocities.push(Velocity {
+                    x: point.coords[0],
+                    y: point.coords[1],
+                    z: point.coords[2],
+                    vx: velocity[0],
+                    vy: velocity[1],
+                    vz: velocity[2],
+                });
+            }
         }
     }
-    unimplemented!()
+    Ok(velocities)
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct Velocity {}
+pub struct Velocity {
+    x: f64,
+    y: f64,
+    z: f64,
+    vx: f64,
+    vy: f64,
+    vz: f64,
+}
 
 struct Grid {
     map: HashMap<(i64, i64), Vec<Point>>,
@@ -58,8 +79,8 @@ impl Grid {
         let mut map = HashMap::new();
         for point in Reader::from_path(path)?.points() {
             let point = point?;
-            let r = point.x as i64 / GRID_SIZE;
-            let c = point.y as i64 / GRID_SIZE;
+            let c = point.x as i64 / GRID_SIZE;
+            let r = point.y as i64 / GRID_SIZE;
             map.entry((r, c)).or_insert_with(Vec::new).push(point);
         }
         Ok(Grid { map: map })
@@ -110,4 +131,13 @@ fn points_to_matrix(points: &Vec<Point>) -> Matrix<U3> {
         matrix[(i, 2)] = point.z;
     }
     matrix
+}
+
+fn center_of_gravity(matrix: &Matrix<U3>) -> Point3<f64> {
+    use cpd::Vector;
+    let mut point = Vector::<U3>::zeros();
+    for d in 0..3 {
+        point[d] = matrix.column(d).iter().sum::<f64>() / matrix.nrows() as f64;
+    }
+    Point3::from_coordinates(point)
 }
