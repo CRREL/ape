@@ -14,6 +14,6 @@ extern crate serde_derive;
 
 pub mod incl;
 pub mod utils;
-mod velocities;
+pub mod velocities;
 
 pub use velocities::velocities;

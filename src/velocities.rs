@@ -8,10 +8,11 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-const GRID_SIZE: i64 = 100;
+const GRID_SIZE: i64 = 200;
 const INTERVAL: f64 = 6.;
 const THREADS: usize = 6;
-const MIN_POINTS: usize = 1000;
+const MIN_POINTS: usize = 5000;
+const MAX_POINTS: usize = 20000;
 
 #[derive(Debug, Fail)]
 #[fail(display = "No moving path for path: {}", _0)]
@@ -30,7 +31,9 @@ pub fn velocities<P: AsRef<Path>>(path: P) -> Result<Vec<Velocity>, Error> {
         if let Some(after) = after.map.get(&(r, c)) {
             let before = points_to_matrix(before);
             let after = points_to_matrix(after);
-            if before.nrows() > MIN_POINTS && after.nrows() > MIN_POINTS {
+            if before.nrows() >= MIN_POINTS && before.nrows() <= MAX_POINTS &&
+                after.nrows() >= MIN_POINTS && after.nrows() <= MAX_POINTS
+            {
                 args.push(Arg {
                     r: r,
                     c: c,
@@ -120,22 +123,22 @@ fn worker(
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Velocity {
-    after_points: usize,
-    before_points: usize,
-    center_of_gravity: Vector,
-    datetime: DateTime<Utc>,
-    grid_size: i64,
-    iterations: usize,
-    velocity: Vector,
-    x: f64,
-    y: f64,
+    pub after_points: usize,
+    pub before_points: usize,
+    pub center_of_gravity: Vector,
+    pub datetime: DateTime<Utc>,
+    pub grid_size: i64,
+    pub iterations: usize,
+    pub velocity: Vector,
+    pub x: f64,
+    pub y: f64,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Vector {
-    x: f64,
-    y: f64,
-    z: f64,
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
 }
 
 struct Grid {

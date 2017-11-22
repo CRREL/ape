@@ -37,10 +37,14 @@ fn main() {
         cpd(matches);
     } else if let Some(matches) = matches.subcommand_matches("magic-bucket-config") {
         magic_bucket_config(matches);
-    } else if let Some(matches) = matches.subcommand_matches("velocities") {
-        velocities(matches);
     } else if let Some(matches) = matches.subcommand_matches("sop") {
         sop(matches);
+    } else if let Some(matches) = matches.subcommand_matches("velocities") {
+        if let Some(matches) = matches.subcommand_matches("create") {
+            velocities_create(matches);
+        } else if let Some(matches) = matches.subcommand_matches("to-csv") {
+            velocities_to_csv(matches);
+        }
     } else if let Some(matches) = matches.subcommand_matches("incl") {
         if let Some(matches) = matches.subcommand_matches("extract") {
             #[cfg(feature = "scanlib")] incl_extract(matches);
@@ -86,7 +90,7 @@ fn cpd(matches: &ArgMatches) {
     }
 }
 
-fn velocities(matches: &ArgMatches) {
+fn velocities_create(matches: &ArgMatches) {
     use std::fs::File;
     use std::io::Write;
 
@@ -98,6 +102,29 @@ fn velocities(matches: &ArgMatches) {
         "{}",
         serde_json::to_string_pretty(&velocities).unwrap()
     ).unwrap();
+}
+
+fn velocities_to_csv(matches: &ArgMatches) {
+    use ape::velocities::Velocity;
+    use std::fs::File;
+    let infile = File::open(matches.value_of("INFILE").unwrap()).unwrap();
+    let velocities: Vec<Velocity> = serde_json::from_reader(infile).unwrap();
+    println!("Easting,Northing,Vx,Vy,Vz,V,Before,After");
+    for velocity in velocities {
+        println!(
+            "{},{},{},{},{},{},{},{}",
+            velocity.center_of_gravity.x,
+            velocity.center_of_gravity.y,
+            velocity.velocity.x,
+            velocity.velocity.y,
+            velocity.velocity.z,
+            (velocity.velocity.x.powi(2) + velocity.velocity.y.powi(2) +
+                velocity.velocity.z.powi(2))
+                .sqrt(),
+            velocity.before_points,
+            velocity.after_points,
+        );
+    }
 }
 
 fn read_dat<P: AsRef<Path>>(path: P) -> String {

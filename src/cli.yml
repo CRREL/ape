@@ -17,16 +17,26 @@ subcommands:
                 required: true
                 index: 3
     - velocities:
-        about: Create a velocity map from a las file.
-        args:
-            - INFILE:
-                help: The input file. This is the "moving" file for the velocities. It is expected that there will be a 6hrs later file in the same directory as this file.
-                required: true
-                index: 1
-            - OUTFILE:
-                help: The output file to hold the velocity information.
-                required: true
-                index: 2
+        about: Work with glacier velocities.
+        subcommands:
+            - create:
+                about: Create a velocity map from a las file.
+                args:
+                    - INFILE:
+                        help: The input file. This is the "moving" file for the velocities. It is expected that there will be a 6hrs later file in the same directory as this file.
+                        required: true
+                        index: 1
+                    - OUTFILE:
+                        help: The output file to hold the velocity information.
+                        required: true
+                        index: 2
+            - to-csv:
+                about: Print a velocity file as a csv.
+                args:
+                    - INFILE:
+                        help: The input velocity file.
+                        required: true
+                        index: 1
     - magic-bucket-config:
         about: Prints the magic bucket configuration for the provided sop, adjustment, and pop.
         args:
