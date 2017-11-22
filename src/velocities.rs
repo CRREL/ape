@@ -1,13 +1,16 @@
 use chrono::{DateTime, Duration, Utc};
-use cpd::{Matrix, Normalize, Runner, U3};
+use cpd::{Matrix, Normalize, Rigid, Runner, U3};
 use failure::Error;
 use las::{Point, Reader};
 use nalgebra::Point3;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use std::thread;
 
 const GRID_SIZE: i64 = 200;
 const INTERVAL: f64 = 6.;
+const THREADS: usize = 6;
 
 #[derive(Debug, Fail)]
 #[fail(display = "No moving path for path: {}", _0)]
@@ -21,44 +24,69 @@ pub fn velocities<P: AsRef<Path>>(path: P) -> Result<Vec<Velocity>, Error> {
         .normalize(Normalize::SameScale)
         .rigid()
         .scale(false);
-    let mut velocities = Vec::new();
+    let mut args = Vec::new();
     for (&(r, c), before) in &before.map {
         if let Some(after) = after.map.get(&(r, c)) {
-            println!(
-                "Running grid cell ({}, {}) with {} before points and {} after points",
-                r,
-                c,
-                before.len(),
-                after.len()
-            );
             let before = points_to_matrix(before);
             let after = points_to_matrix(after);
-            let run = rigid.register(&after, &before)?;
-            if run.converged {
-                let point = center_of_gravity(&before);
-                let moved_point = run.transform.as_transform3() * point;
-                let velocity = (moved_point - point) / INTERVAL;
-                velocities.push(Velocity {
-                    center_of_gravity: Vector {
-                        x: point.coords[0],
-                        y: point.coords[1],
-                        z: point.coords[2],
-                    },
-                    datetime: datetime_from_path(path)? + Duration::hours(INTERVAL as i64 / 2),
-                    before_points: before.nrows(),
-                    after_points: after.nrows(),
-                    iterations: run.iterations,
-                    velocity: Vector {
-                        x: velocity[0],
-                        y: velocity[1],
-                        z: velocity[2],
-                    },
-                    x: (c * GRID_SIZE) as f64,
-                    y: (r * GRID_SIZE) as f64,
-                    grid_size: GRID_SIZE,
-                });
+            args.push((r, c, before, after));
+        }
+    }
+    let args = Arc::new(Mutex::new(args));
+    let mut handles = Vec::new();
+    for _ in 0..THREADS {
+        let args = args.clone();
+        let rigid = rigid.clone();
+        let path = path.as_ref().to_path_buf();
+        let handle = thread::spawn(move || worker(rigid, path, args));
+        handles.push(handle);
+    }
+    let mut velocities = Vec::new();
+    for handle in handles {
+        velocities.extend(handle.join().unwrap()?);
+    }
+    Ok(velocities)
+}
+
+fn worker(
+    rigid: Rigid,
+    path: PathBuf,
+    args: Arc<Mutex<Vec<(i64, i64, Matrix<U3>, Matrix<U3>)>>>,
+) -> Result<Vec<Velocity>, Error> {
+    let mut velocities = Vec::new();
+    loop {
+        let (r, c, before, after) = {
+            let mut args = args.lock().unwrap();
+            if let Some(args) = args.pop() {
+                args
+            } else {
                 break;
             }
+        };
+        let run = rigid.register(&after, &before)?;
+        if run.converged {
+            let point = center_of_gravity(&before);
+            let moved_point = run.transform.as_transform3() * point;
+            let velocity = (moved_point - point) / INTERVAL;
+            velocities.push(Velocity {
+                center_of_gravity: Vector {
+                    x: point.coords[0],
+                    y: point.coords[1],
+                    z: point.coords[2],
+                },
+                datetime: datetime_from_path(&path)? + Duration::hours(INTERVAL as i64 / 2),
+                before_points: before.nrows(),
+                after_points: after.nrows(),
+                iterations: run.iterations,
+                velocity: Vector {
+                    x: velocity[0],
+                    y: velocity[1],
+                    z: velocity[2],
+                },
+                x: (c * GRID_SIZE) as f64,
+                y: (r * GRID_SIZE) as f64,
+                grid_size: GRID_SIZE,
+            });
         }
     }
     Ok(velocities)
