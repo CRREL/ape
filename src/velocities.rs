@@ -40,11 +40,11 @@ pub fn velocities<P: AsRef<Path>>(path: P) -> Result<Vec<Velocity>, Error> {
     }
     let args = Arc::new(Mutex::new(args));
     let mut handles = Vec::new();
-    for _ in 0..THREADS {
+    for i in 0..THREADS {
         let args = args.clone();
         let rigid = rigid.clone();
         let path = path.as_ref().to_path_buf();
-        let handle = thread::spawn(move || worker(rigid, path, args));
+        let handle = thread::spawn(move || worker(i, rigid, path, args));
         handles.push(handle);
     }
     let mut velocities = Vec::new();
@@ -61,14 +61,20 @@ struct Arg {
     after: Matrix<U3>,
 }
 
-fn worker(rigid: Rigid, path: PathBuf, args: Arc<Mutex<Vec<Arg>>>) -> Result<Vec<Velocity>, Error> {
+fn worker(
+    id: usize,
+    rigid: Rigid,
+    path: PathBuf,
+    args: Arc<Mutex<Vec<Arg>>>,
+) -> Result<Vec<Velocity>, Error> {
     let mut velocities = Vec::new();
     loop {
         let arg = {
             let mut args = args.lock().unwrap();
             if let Some(arg) = args.pop() {
                 println!(
-                    "Running grid cell ({}, {}) with {} before points and {} after points, {} cells remaining",
+                    "#{}: Running grid cell ({}, {}) with {} before points and {} after points, {} cells remaining",
+                    id,
                     arg.r,
                     arg.c,
                     arg.before.nrows(),
