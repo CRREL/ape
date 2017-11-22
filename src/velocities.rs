@@ -8,9 +8,10 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-const GRID_SIZE: i64 = 200;
+const GRID_SIZE: i64 = 100;
 const INTERVAL: f64 = 6.;
 const THREADS: usize = 6;
+const MIN_POINTS: usize = 1000;
 
 #[derive(Debug, Fail)]
 #[fail(display = "No moving path for path: {}", _0)]
@@ -29,13 +30,14 @@ pub fn velocities<P: AsRef<Path>>(path: P) -> Result<Vec<Velocity>, Error> {
         if let Some(after) = after.map.get(&(r, c)) {
             let before = points_to_matrix(before);
             let after = points_to_matrix(after);
-
-            args.push(Arg {
-                r: r,
-                c: c,
-                before: before,
-                after: after,
-            })
+            if before.nrows() > MIN_POINTS && after.nrows() > MIN_POINTS {
+                args.push(Arg {
+                    r: r,
+                    c: c,
+                    before: before,
+                    after: after,
+                })
+            }
         }
     }
     let args = Arc::new(Mutex::new(args));
@@ -112,6 +114,7 @@ fn worker(
             });
         }
     }
+    println!("Worker #{} is done", id);
     Ok(velocities)
 }
 
