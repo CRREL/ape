@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use cpd::{Matrix, Normalize, Runner, U3};
 use failure::Error;
 use las::{Point, Reader};
@@ -7,47 +7,57 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 const GRID_SIZE: i64 = 100;
+const INTERVAL: f64 = 6.;
 
 #[derive(Debug, Fail)]
 #[fail(display = "No moving path for path: {}", _0)]
 struct NoMovingPath(String);
 
 pub fn velocities<P: AsRef<Path>>(path: P) -> Result<Vec<Velocity>, Error> {
-    let fixed = Grid::from_path(&path)?;
-    let moving_path = moving_path(path)?;
-    let moving = Grid::from_path(moving_path)?;
+    let before = Grid::from_path(&path)?;
+    let after_path = moving_path(&path)?;
+    let after = Grid::from_path(after_path)?;
     let rigid = Runner::new()
         .normalize(Normalize::SameScale)
         .rigid()
         .scale(false);
     let mut velocities = Vec::new();
-    for (&(r, c), fixed) in &fixed.map {
-        if let Some(moving) = moving.map.get(&(r, c)) {
-            if fixed.len() < 1000 || moving.len() < 1000 {
-                continue;
-            }
+    for (&(r, c), before) in &before.map {
+        if let Some(after) = after.map.get(&(r, c)) {
             println!(
-                "Running grid cell ({}, {}) with {} fixed points and {} moving points",
+                "Running grid cell ({}, {}) with {} before points and {} after points",
                 r,
                 c,
-                fixed.len(),
-                moving.len()
+                before.len(),
+                after.len()
             );
-            let fixed = points_to_matrix(fixed);
-            let moving = points_to_matrix(moving);
-            let run = rigid.register(&fixed, &moving)?;
+            let before = points_to_matrix(before);
+            let after = points_to_matrix(after);
+            let run = rigid.register(&after, &before)?;
             if run.converged {
-                let point = center_of_gravity(&fixed);
+                let point = center_of_gravity(&before);
                 let moved_point = run.transform.as_transform3() * point;
-                let velocity = (moved_point - point) / 6.;
+                let velocity = (moved_point - point) / INTERVAL;
                 velocities.push(Velocity {
-                    x: point.coords[0],
-                    y: point.coords[1],
-                    z: point.coords[2],
-                    vx: velocity[0],
-                    vy: velocity[1],
-                    vz: velocity[2],
+                    center_of_gravity: Vector {
+                        x: point.coords[0],
+                        y: point.coords[1],
+                        z: point.coords[2],
+                    },
+                    datetime: datetime_from_path(path)? + Duration::hours(INTERVAL as i64 / 2),
+                    before_points: before.nrows(),
+                    after_points: after.nrows(),
+                    iterations: run.iterations,
+                    velocity: Vector {
+                        x: velocity[0],
+                        y: velocity[1],
+                        z: velocity[2],
+                    },
+                    x: (c * GRID_SIZE) as f64,
+                    y: (r * GRID_SIZE) as f64,
+                    grid_size: GRID_SIZE,
                 });
+                break;
             }
         }
     }
@@ -56,12 +66,22 @@ pub fn velocities<P: AsRef<Path>>(path: P) -> Result<Vec<Velocity>, Error> {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Velocity {
+    after_points: usize,
+    before_points: usize,
+    center_of_gravity: Vector,
+    datetime: DateTime<Utc>,
+    grid_size: i64,
+    iterations: usize,
+    velocity: Vector,
+    x: f64,
+    y: f64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Vector {
     x: f64,
     y: f64,
     z: f64,
-    vx: f64,
-    vy: f64,
-    vz: f64,
 }
 
 struct Grid {
@@ -114,11 +134,10 @@ fn datetime_from_path<P: AsRef<Path>>(path: P) -> Result<DateTime<Utc>, Error> {
 }
 
 fn is_the_moving_path<P: AsRef<Path>>(fixed: DateTime<Utc>, path: P) -> bool {
-    use chrono::Duration;
     datetime_from_path(path)
         .map(|moving| {
             let duration = moving.signed_duration_since(fixed);
-            duration > Duration::hours(0) && duration < Duration::hours(7)
+            duration > Duration::hours(0) && duration < Duration::hours(INTERVAL as i64 + 1)
         })
         .unwrap_or(false)
 }

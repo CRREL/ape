@@ -121,6 +121,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "num 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.38 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -142,7 +143,7 @@ dependencies = [
 [[package]]
 name = "cpd"
 version = "0.1.0"
-source = "git+https://github.com/gadomski/cpd-rs#a91be99d79814aa779b0e66c079a09f911cf37e4"
+source = "git+https://github.com/gadomski/cpd-rs#b196be01e6f6f4b9853c6513f93389170a8b5802"
 dependencies = [
  "alga 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
