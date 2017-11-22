@@ -6,6 +6,7 @@ extern crate cpd;
 extern crate env_logger;
 #[macro_use]
 extern crate lazy_static;
+extern crate nalgebra;
 #[macro_use]
 extern crate serde_json;
 extern crate walkdir;
@@ -14,6 +15,9 @@ use ape::incl::{Inclination, Stats};
 use ape::utils;
 use chrono::{DateTime, TimeZone, Utc};
 use clap::ArgMatches;
+use cpd::SquareMatrix;
+use nalgebra::U4;
+use std::path::Path;
 use walkdir::WalkDir;
 
 lazy_static! {
@@ -35,6 +39,8 @@ fn main() {
         magic_bucket_config(matches);
     } else if let Some(matches) = matches.subcommand_matches("velocities") {
         velocities(matches);
+    } else if let Some(matches) = matches.subcommand_matches("sop") {
+        sop(matches);
     } else if let Some(matches) = matches.subcommand_matches("incl") {
         if let Some(matches) = matches.subcommand_matches("extract") {
             #[cfg(feature = "scanlib")] incl_extract(matches);
@@ -94,24 +100,40 @@ fn velocities(matches: &ArgMatches) {
     ).unwrap();
 }
 
-fn magic_bucket_config(matches: &ArgMatches) {
+fn read_dat<P: AsRef<Path>>(path: P) -> String {
     use std::fs::File;
     use std::io::Read;
 
-    let read = |name| {
-        let mut matrix = String::new();
-        let mut file = File::open(matches.value_of(name).unwrap()).unwrap();
-        file.read_to_string(&mut matrix).unwrap();
-        matrix
-            .replace("\n", " ")
-            .replace("\r", " ")
-            .trim()
-            .to_string()
-    };
+    let mut matrix = String::new();
+    let mut file = File::open(path).unwrap();
+    file.read_to_string(&mut matrix).unwrap();
+    matrix
+        .replace("\n", " ")
+        .replace("\r", " ")
+        .trim()
+        .to_string()
+}
 
-    let sop = read("SOP");
-    let adjustment = read("ADJUSTMENT");
-    let pop = read("POP");
+fn matrix_from_dat(s: &str) -> SquareMatrix<U4> {
+    SquareMatrix::<U4>::from_iterator(s.split_whitespace().map(|s| s.parse::<f64>().unwrap()))
+}
+
+fn sop(matches: &ArgMatches) {
+    let sop = matrix_from_dat(&read_dat(matches.value_of("SOP").unwrap()));
+    let adjustment = matrix_from_dat(&read_dat(matches.value_of("ADJUSTMENT").unwrap()));
+    let sop = adjustment * sop;
+    for r in 0..4 {
+        for c in 0..3 {
+            print!("{} ", sop[(r, c)]);
+        }
+        println!("{}", sop[(r, 3)]);
+    }
+}
+
+fn magic_bucket_config(matches: &ArgMatches) {
+    let sop = read_dat(matches.value_of("SOP").unwrap());
+    let adjustment = read_dat(matches.value_of("ADJUSTMENT").unwrap());
+    let pop = read_dat(matches.value_of("POP").unwrap());
 
     let config = json!({
         "filters": [

@@ -42,6 +42,17 @@ subcommands:
                 help: The pop file.
                 required: true
                 index: 3
+    - sop:
+        about: Prints the sop for a file from the sop file and the adjustment file.
+        args:
+            - SOP:
+                help: The sop file.
+                required: true
+                index: 1
+            - ADJUSTMENT:
+                help: The adjustment matrix.
+                required: true
+                index: 2
     - incl:
         about: Extract and manipulate rxp inclination data.
         subcommands:
