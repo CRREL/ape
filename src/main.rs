@@ -121,7 +121,7 @@ fn matrix_from_dat(s: &str) -> SquareMatrix<U4> {
 fn sop(matches: &ArgMatches) {
     let sop = matrix_from_dat(&read_dat(matches.value_of("SOP").unwrap()));
     let adjustment = matrix_from_dat(&read_dat(matches.value_of("ADJUSTMENT").unwrap()));
-    let sop = adjustment * sop;
+    let sop = sop * adjustment;
     for r in 0..4 {
         for c in 0..3 {
             print!("{} ", sop[(r, c)]);
