@@ -57,8 +57,16 @@ fn worker(
     loop {
         let (r, c, before, after) = {
             let mut args = args.lock().unwrap();
-            if let Some(args) = args.pop() {
-                args
+            if let Some((r, c, before, after)) = args.pop() {
+                println!(
+                    "Running grid cell ({}, {}) with {} before points and {} after points, {} cells remaining",
+                    r,
+                    c,
+                    before.nrows(),
+                    after.nrows(),
+                    args.len()
+                );
+                (r, c, before, after)
             } else {
                 break;
             }
