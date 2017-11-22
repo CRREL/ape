@@ -116,12 +116,13 @@ fn read_dat<P: AsRef<Path>>(path: P) -> String {
 
 fn matrix_from_dat(s: &str) -> SquareMatrix<U4> {
     SquareMatrix::<U4>::from_iterator(s.split_whitespace().map(|s| s.parse::<f64>().unwrap()))
+        .transpose()
 }
 
 fn sop(matches: &ArgMatches) {
     let sop = matrix_from_dat(&read_dat(matches.value_of("SOP").unwrap()));
     let adjustment = matrix_from_dat(&read_dat(matches.value_of("ADJUSTMENT").unwrap()));
-    let sop = sop * adjustment;
+    let sop = adjustment * sop;
     for r in 0..4 {
         for c in 0..3 {
             print!("{} ", sop[(r, c)]);
