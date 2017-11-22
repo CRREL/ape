@@ -29,7 +29,13 @@ pub fn velocities<P: AsRef<Path>>(path: P) -> Result<Vec<Velocity>, Error> {
         if let Some(after) = after.map.get(&(r, c)) {
             let before = points_to_matrix(before);
             let after = points_to_matrix(after);
-            args.push((r, c, before, after));
+
+            args.push(Arg {
+                r: r,
+                c: c,
+                before: before,
+                after: after,
+            })
         }
     }
     let args = Arc::new(Mutex::new(args));
@@ -48,32 +54,35 @@ pub fn velocities<P: AsRef<Path>>(path: P) -> Result<Vec<Velocity>, Error> {
     Ok(velocities)
 }
 
-fn worker(
-    rigid: Rigid,
-    path: PathBuf,
-    args: Arc<Mutex<Vec<(i64, i64, Matrix<U3>, Matrix<U3>)>>>,
-) -> Result<Vec<Velocity>, Error> {
+struct Arg {
+    r: i64,
+    c: i64,
+    before: Matrix<U3>,
+    after: Matrix<U3>,
+}
+
+fn worker(rigid: Rigid, path: PathBuf, args: Arc<Mutex<Vec<Arg>>>) -> Result<Vec<Velocity>, Error> {
     let mut velocities = Vec::new();
     loop {
-        let (r, c, before, after) = {
+        let arg = {
             let mut args = args.lock().unwrap();
-            if let Some((r, c, before, after)) = args.pop() {
+            if let Some(arg) = args.pop() {
                 println!(
                     "Running grid cell ({}, {}) with {} before points and {} after points, {} cells remaining",
-                    r,
-                    c,
-                    before.nrows(),
-                    after.nrows(),
+                    arg.r,
+                    arg.c,
+                    arg.before.nrows(),
+                    arg.after.nrows(),
                     args.len()
                 );
-                (r, c, before, after)
+                arg
             } else {
                 break;
             }
         };
-        let run = rigid.register(&after, &before)?;
+        let run = rigid.register(&arg.after, &arg.before)?;
         if run.converged {
-            let point = center_of_gravity(&before);
+            let point = center_of_gravity(&arg.before);
             let moved_point = run.transform.as_transform3() * point;
             let velocity = (moved_point - point) / INTERVAL;
             velocities.push(Velocity {
@@ -83,16 +92,16 @@ fn worker(
                     z: point.coords[2],
                 },
                 datetime: datetime_from_path(&path)? + Duration::hours(INTERVAL as i64 / 2),
-                before_points: before.nrows(),
-                after_points: after.nrows(),
+                before_points: arg.before.nrows(),
+                after_points: arg.after.nrows(),
                 iterations: run.iterations,
                 velocity: Vector {
                     x: velocity[0],
                     y: velocity[1],
                     z: velocity[2],
                 },
-                x: (c * GRID_SIZE) as f64,
-                y: (r * GRID_SIZE) as f64,
+                x: (arg.c * GRID_SIZE) as f64,
+                y: (arg.r * GRID_SIZE) as f64,
                 grid_size: GRID_SIZE,
             });
         }
