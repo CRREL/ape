@@ -24,6 +24,7 @@ pub fn velocities<P: AsRef<Path>>(path: P) -> Result<Vec<Velocity>, Error> {
     let after = Grid::from_path(after_path)?;
     let rigid = Runner::new()
         .normalize(Normalize::SameScale)
+        .sigma2(0.1)
         .rigid()
         .scale(false);
     let mut args = Vec::new();
