@@ -8,11 +8,12 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-const GRID_SIZE: i64 = 200;
+const GRID_SIZE: i64 = 100;
 const INTERVAL: f64 = 6.;
 const THREADS: usize = 6;
-const MIN_POINTS: usize = 5000;
-const MAX_POINTS: usize = 20000;
+const MIN_POINTS: usize = 1000;
+const MAX_POINTS: usize = 10000;
+const SIGMA2: f64 = 0.01;
 
 #[derive(Debug, Fail)]
 #[fail(display = "No moving path for path: {}", _0)]
@@ -24,7 +25,7 @@ pub fn velocities<P: AsRef<Path>>(path: P) -> Result<Vec<Velocity>, Error> {
     let after = Grid::from_path(after_path)?;
     let rigid = Runner::new()
         .normalize(Normalize::SameScale)
-        .sigma2(0.1)
+        .sigma2(SIGMA2)
         .rigid()
         .scale(false);
     let mut args = Vec::new();
@@ -40,7 +41,7 @@ pub fn velocities<P: AsRef<Path>>(path: P) -> Result<Vec<Velocity>, Error> {
                     c: c,
                     before: before,
                     after: after,
-                })
+                });
             }
         }
     }
@@ -95,8 +96,15 @@ fn worker(
         let run = rigid.register(&arg.after, &arg.before)?;
         if run.converged {
             let point = center_of_gravity(&arg.before);
-            let moved_point = run.transform.as_transform3() * point;
-            let velocity = (moved_point - point) / INTERVAL;
+            let displacement = (0..3)
+                .map(|d| {
+                    (run.moved.column(d) - arg.before.column(d))
+                        .iter()
+                        .sum::<f64>() / arg.before.nrows() as f64
+                })
+                .collect::<Vec<_>>();
+            let displacement = Point3::new(displacement[0], displacement[1], displacement[2]);
+            let velocity = displacement / INTERVAL;
             velocities.push(Velocity {
                 center_of_gravity: Vector {
                     x: point.coords[0],
