@@ -197,7 +197,7 @@ fn moving_path<P: AsRef<Path>>(path: P) -> Result<PathBuf, Error> {
         .ok_or(error.into())
 }
 
-fn datetime_from_path<P: AsRef<Path>>(path: P) -> Result<DateTime<Utc>, Error> {
+pub fn datetime_from_path<P: AsRef<Path>>(path: P) -> Result<DateTime<Utc>, Error> {
     use chrono::TimeZone;
 
     if let Some(file_name) = path.as_ref().file_name().and_then(|f| f.to_str()) {

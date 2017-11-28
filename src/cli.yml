@@ -37,6 +37,13 @@ subcommands:
                         help: The input velocity file.
                         required: true
                         index: 1
+            - datetime:
+                about: Print the velocity datetime from the file (file datetime plus three hours).
+                args:
+                    - INFILE:
+                        help: The input file.
+                        required: true
+                        index: 1
     - magic-bucket-config:
         about: Prints the magic bucket configuration for the provided sop, adjustment, and pop.
         args:

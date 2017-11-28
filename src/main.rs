@@ -44,6 +44,8 @@ fn main() {
             velocities_create(matches);
         } else if let Some(matches) = matches.subcommand_matches("to-csv") {
             velocities_to_csv(matches);
+        } else if let Some(matches) = matches.subcommand_matches("datetime") {
+            velocities_datetime(matches);
         }
     } else if let Some(matches) = matches.subcommand_matches("incl") {
         if let Some(matches) = matches.subcommand_matches("extract") {
@@ -126,6 +128,14 @@ fn velocities_to_csv(matches: &ArgMatches) {
             velocity.after_points,
         );
     }
+}
+
+fn velocities_datetime(matches: &ArgMatches) {
+    use chrono::Duration;
+    use ape::velocities;
+    let path = matches.value_of("INFILE").unwrap();
+    let datetime = velocities::datetime_from_path(path).unwrap() + Duration::hours(3);
+    println!("{}", datetime);
 }
 
 fn read_dat<P: AsRef<Path>>(path: P) -> String {
