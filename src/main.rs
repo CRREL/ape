@@ -109,12 +109,13 @@ fn velocities_to_csv(matches: &ArgMatches) {
     use std::fs::File;
     let infile = File::open(matches.value_of("INFILE").unwrap()).unwrap();
     let velocities: Vec<Velocity> = serde_json::from_reader(infile).unwrap();
-    println!("Easting,Northing,Vx,Vy,Vz,V,Before,After");
+    println!("Easting,Northing,Height,Vx,Vy,Vz,V,Before,After");
     for velocity in velocities {
         println!(
-            "{},{},{},{},{},{},{},{}",
+            "{},{},{},{},{},{},{},{},{}",
             velocity.center_of_gravity.x,
             velocity.center_of_gravity.y,
+            velocity.center_of_gravity.z,
             velocity.velocity.x,
             velocity.velocity.y,
             velocity.velocity.z,

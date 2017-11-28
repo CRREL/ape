@@ -10,6 +10,7 @@ use std::thread;
 
 const GRID_SIZE: i64 = 100;
 const INTERVAL: f64 = 6.;
+const MIN_COG_HEIGHT: f64 = 40.;
 const THREADS: usize = 6;
 const MIN_POINTS: usize = 1000;
 const MAX_POINTS: usize = 10000;
@@ -32,9 +33,12 @@ pub fn velocities<P: AsRef<Path>>(path: P) -> Result<Vec<Velocity>, Error> {
     for (&(r, c), before) in &before.map {
         if let Some(after) = after.map.get(&(r, c)) {
             let before = points_to_matrix(before);
+            let before_cog_z = cog_z(&before);
             let after = points_to_matrix(after);
+            let after_cog_z = cog_z(&after);
             if before.nrows() >= MIN_POINTS && before.nrows() <= MAX_POINTS &&
-                after.nrows() >= MIN_POINTS && after.nrows() <= MAX_POINTS
+                after.nrows() >= MIN_POINTS && after.nrows() <= MAX_POINTS &&
+                before_cog_z > MIN_COG_HEIGHT && after_cog_z > MIN_COG_HEIGHT
             {
                 args.push(Arg {
                     r: r,
@@ -59,6 +63,11 @@ pub fn velocities<P: AsRef<Path>>(path: P) -> Result<Vec<Velocity>, Error> {
         velocities.extend(handle.join().unwrap()?);
     }
     Ok(velocities)
+
+}
+
+fn cog_z(matrix: &Matrix<U3>) -> f64 {
+    matrix.column(2).iter().sum::<f64>() / matrix.nrows() as f64
 }
 
 struct Arg {
