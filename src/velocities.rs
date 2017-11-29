@@ -30,15 +30,19 @@ pub fn velocities<P: AsRef<Path>>(path: P) -> Result<Vec<Velocity>, Error> {
         .rigid()
         .scale(false);
     let mut args = Vec::new();
-    before.grow_cells(&mut after);
+    for _ in 0..2 {
+        before.grow_cells(&mut after);
+    }
     for ((r, c), before) in before.map {
         if let Some(after) = after.map.remove(&(r, c)) {
-            args.push(Arg {
-                r: r,
-                c: c,
-                before: before,
-                after: after,
-            });
+            if before.len() >= MIN_POINTS && after.len() >= MIN_POINTS {
+                args.push(Arg {
+                    r: r,
+                    c: c,
+                    before: before,
+                    after: after,
+                });
+            }
         }
     }
     let args = Arc::new(Mutex::new(args));
@@ -231,10 +235,12 @@ impl Grid {
         let max_c = self.map.keys().map(|&(_, c)| c).max().unwrap();
         for r in min_r..(max_r + 1) {
             for c in min_c..(max_c + 1) {
-                if let Some(npoints) = self.map.get(&(r, c)).map(|v| v.len()) {
-                    if npoints < MIN_POINTS {
-                        self.grow(r, c);
-                        other.grow(r, c);
+                if let Some(a) = self.map.get(&(r, c)).map(|v| v.len()) {
+                    if let Some(b) = self.map.get(&(r, c)).map(|v| v.len()) {
+                        if a < MIN_POINTS || b < MIN_POINTS {
+                            self.grow(r, c);
+                            other.grow(r, c);
+                        }
                     }
                 }
             }
@@ -243,12 +249,13 @@ impl Grid {
 
     fn grow(&mut self, r: i64, c: i64) {
         let mut cell = Cell::new();
-        cell.grid_size = GRID_SIZE * 2;
-        cell.extend(self.map.remove(&(r, c)));
-        cell.extend(self.map.remove(&(r + 1, c)));
-        cell.extend(self.map.remove(&(r, c + 1)));
-        cell.extend(self.map.remove(&(r + 1, c + 1)));
-        if cell.len() >= MIN_POINTS {
+        if let Some(ll) = self.map.remove(&(r, c)) {
+            let factor = ll.grid_size / GRID_SIZE;
+            cell.grid_size = ll.grid_size * 2;
+            cell.extend(Some(ll));
+            cell.extend(self.map.remove(&(r + factor, c)));
+            cell.extend(self.map.remove(&(r, c + factor)));
+            cell.extend(self.map.remove(&(r + factor, c + factor)));
             self.map.insert((r, c), cell);
         }
     }
