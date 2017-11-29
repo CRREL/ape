@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-const GRID_SIZE: i64 = 100;
+pub const GRID_SIZE: i64 = 100;
 const INTERVAL: f64 = 6.;
 const MIN_COG_HEIGHT: f64 = 40.;
 const THREADS: usize = 7;
