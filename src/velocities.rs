@@ -250,13 +250,25 @@ impl Grid {
     fn grow(&mut self, r: i64, c: i64) {
         let mut cell = Cell::new();
         if let Some(ll) = self.map.remove(&(r, c)) {
-            let factor = ll.grid_size / GRID_SIZE;
-            cell.grid_size = ll.grid_size * 2;
+            let grid_size = ll.grid_size;
+            let factor = grid_size / GRID_SIZE;
+            cell.grid_size = grid_size * 2;
             cell.extend(Some(ll));
-            cell.extend(self.map.remove(&(r + factor, c)));
-            cell.extend(self.map.remove(&(r, c + factor)));
-            cell.extend(self.map.remove(&(r + factor, c + factor)));
+            cell.extend(self.remove(r + factor, c, grid_size));
+            cell.extend(self.remove(r, c + factor, grid_size));
+            cell.extend(self.remove(r + factor, c + factor, grid_size));
             self.map.insert((r, c), cell);
+        }
+    }
+
+    fn remove(&mut self, r: i64, c: i64, grid_size: i64) -> Option<Cell> {
+        if self.map.get(&(r, c)).is_some() {
+            while self.map.get(&(r, c)).unwrap().grid_size < grid_size {
+                self.grow(r, c);
+            }
+            self.map.remove(&(r, c))
+        } else {
+            None
         }
     }
 }
