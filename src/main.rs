@@ -111,6 +111,11 @@ fn velocities_to_csv(matches: &ArgMatches) {
     use std::fs::File;
     let infile = File::open(matches.value_of("INFILE").unwrap()).unwrap();
     let velocities: Vec<Velocity> = serde_json::from_reader(infile).unwrap();
+    if velocities.is_empty() {
+        panic!("No velocities");
+    } else if velocities.len() < 100 {
+        panic!("Too few velocities: {}", velocities.len());
+    }
     println!("Easting,Northing,Height,Vx,Vy,Vz,V,Before,After");
     for velocity in velocities {
         println!(
