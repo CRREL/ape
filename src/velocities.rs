@@ -76,11 +76,13 @@ fn worker(
         let arg = {
             let mut args = args.lock().unwrap();
             if let Some(arg) = args.pop() {
+                assert_eq!(arg.before.grid_size, arg.after.grid_size);
                 println!(
-                    "#{}: Running grid cell ({}, {}) with {} before points and {} after points, {} cells remaining",
+                    "#{}: Running grid cell ({}, {}), size {}, with {} before points and {} after points, {} cells remaining",
                     id,
                     arg.r,
                     arg.c,
+                    arg.before.grid_size,
                     arg.before.len(),
                     arg.after.len(),
                     args.len()
@@ -199,6 +201,12 @@ impl Cell {
     fn push(&mut self, point: Point) {
         self.points.push(point);
     }
+
+    fn extend(&mut self, cell: Option<Cell>) {
+        if let Some(cell) = cell {
+            self.points.extend(cell.points);
+        }
+    }
 }
 
 impl Grid {
@@ -225,12 +233,24 @@ impl Grid {
             for c in min_c..(max_c + 1) {
                 if let Some(npoints) = self.map.get(&(r, c)).map(|v| v.len()) {
                     if npoints < MIN_POINTS {
-                        panic!("Need to join");
+                        self.grow(r, c);
+                        other.grow(r, c);
                     }
                 }
             }
         }
-        unimplemented!()
+    }
+
+    fn grow(&mut self, r: i64, c: i64) {
+        let mut cell = Cell::new();
+        cell.grid_size = GRID_SIZE * 2;
+        cell.extend(self.map.remove(&(r, c)));
+        cell.extend(self.map.remove(&(r + 1, c)));
+        cell.extend(self.map.remove(&(r, c + 1)));
+        cell.extend(self.map.remove(&(r + 1, c + 1)));
+        if cell.len() >= MIN_POINTS {
+            self.map.insert((r, c), cell);
+        }
     }
 }
 
