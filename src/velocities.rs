@@ -30,7 +30,7 @@ pub fn velocities<P: AsRef<Path>>(path: P) -> Result<Vec<Velocity>, Error> {
         .rigid()
         .scale(false);
     let mut args = Vec::new();
-    for _ in 0..2 {
+    for _ in 0..1 {
         before.grow_cells(&mut after);
     }
     for ((r, c), before) in before.map {
