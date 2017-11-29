@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-const GRID_SIZE: i64 = 100;
+pub const GRID_SIZE: i64 = 100;
 const INTERVAL: f64 = 6.;
 const MIN_COG_HEIGHT: f64 = 40.;
 const THREADS: usize = 7;
@@ -21,25 +21,21 @@ const SIGMA2: f64 = 0.01;
 struct NoMovingPath(String);
 
 pub fn velocities<P: AsRef<Path>>(path: P) -> Result<Vec<Velocity>, Error> {
-    let before = Grid::from_path(&path)?;
+    let mut before = Grid::from_path(&path)?;
     let after_path = moving_path(&path)?;
-    let after = Grid::from_path(after_path)?;
+    let mut after = Grid::from_path(after_path)?;
     let rigid = Runner::new()
         .normalize(Normalize::SameScale)
         .sigma2(SIGMA2)
         .rigid()
         .scale(false);
     let mut args = Vec::new();
-    for (&(r, c), before) in &before.map {
-        if let Some(after) = after.map.get(&(r, c)) {
-            let before = points_to_matrix(before);
-            let before_cog_z = cog_z(&before);
-            let after = points_to_matrix(after);
-            let after_cog_z = cog_z(&after);
-            if before.nrows() >= MIN_POINTS && before.nrows() <= MAX_POINTS &&
-                after.nrows() >= MIN_POINTS && after.nrows() <= MAX_POINTS &&
-                before_cog_z > MIN_COG_HEIGHT && after_cog_z > MIN_COG_HEIGHT
-            {
+    for _ in 0..1 {
+        before.grow_cells(&mut after);
+    }
+    for ((r, c), before) in before.map {
+        if let Some(after) = after.map.remove(&(r, c)) {
+            if before.len() >= MIN_POINTS && after.len() >= MIN_POINTS {
                 args.push(Arg {
                     r: r,
                     c: c,
@@ -66,15 +62,11 @@ pub fn velocities<P: AsRef<Path>>(path: P) -> Result<Vec<Velocity>, Error> {
 
 }
 
-fn cog_z(matrix: &Matrix<U3>) -> f64 {
-    matrix.column(2).iter().sum::<f64>() / matrix.nrows() as f64
-}
-
 struct Arg {
     r: i64,
     c: i64,
-    before: Matrix<U3>,
-    after: Matrix<U3>,
+    before: Cell,
+    after: Cell,
 }
 
 fn worker(
@@ -88,13 +80,15 @@ fn worker(
         let arg = {
             let mut args = args.lock().unwrap();
             if let Some(arg) = args.pop() {
+                assert_eq!(arg.before.grid_size, arg.after.grid_size);
                 println!(
-                    "#{}: Running grid cell ({}, {}) with {} before points and {} after points, {} cells remaining",
+                    "#{}: Running grid cell ({}, {}), size {}, with {} before points and {} after points, {} cells remaining",
                     id,
                     arg.r,
                     arg.c,
-                    arg.before.nrows(),
-                    arg.after.nrows(),
+                    arg.before.grid_size,
+                    arg.before.len(),
+                    arg.after.len(),
                     args.len()
                 );
                 arg
@@ -102,14 +96,14 @@ fn worker(
                 break;
             }
         };
-        let run = rigid.register(&arg.after, &arg.before)?;
+        let run = rigid.register(&arg.after.matrix(), &arg.before.matrix())?;
         if run.converged {
-            let point = center_of_gravity(&arg.before);
+            let point = arg.before.center_of_gravity();
+            let before = arg.before.matrix();
             let displacement = (0..3)
                 .map(|d| {
-                    (run.moved.column(d) - arg.before.column(d))
-                        .iter()
-                        .sum::<f64>() / arg.before.nrows() as f64
+                    (run.moved.column(d) - before.column(d)).iter().sum::<f64>() /
+                        before.nrows() as f64
                 })
                 .collect::<Vec<_>>();
             let displacement = Point3::new(displacement[0], displacement[1], displacement[2]);
@@ -121,8 +115,8 @@ fn worker(
                     z: point.coords[2],
                 },
                 datetime: datetime_from_path(&path)? + Duration::hours(INTERVAL as i64 / 2),
-                before_points: arg.before.nrows(),
-                after_points: arg.after.nrows(),
+                before_points: arg.before.len(),
+                after_points: arg.after.len(),
                 iterations: run.iterations,
                 velocity: Vector {
                     x: velocity[0],
@@ -131,7 +125,7 @@ fn worker(
                 },
                 x: (arg.c * GRID_SIZE) as f64,
                 y: (arg.r * GRID_SIZE) as f64,
-                grid_size: GRID_SIZE,
+                grid_size: arg.before.grid_size,
             });
         }
     }
@@ -159,13 +153,63 @@ pub struct Vector {
     pub z: f64,
 }
 
+#[derive(Debug)]
+struct Cell {
+    points: Vec<Point>,
+    grid_size: i64,
+}
+
+#[derive(Debug)]
 struct Grid {
-    map: HashMap<(i64, i64), Vec<Point>>,
+    map: HashMap<(i64, i64), Cell>,
 }
 
 impl NoMovingPath {
     fn new<P: AsRef<Path>>(path: P) -> NoMovingPath {
         NoMovingPath(path.as_ref().display().to_string())
+    }
+}
+
+impl Cell {
+    fn new() -> Cell {
+        Cell {
+            points: Vec::new(),
+            grid_size: GRID_SIZE,
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.points.len()
+    }
+
+    fn matrix(&self) -> Matrix<U3> {
+        let mut matrix = Matrix::<U3>::zeros(self.points.len());
+        for (i, point) in self.points.iter().enumerate() {
+            matrix[(i, 0)] = point.x;
+            matrix[(i, 1)] = point.y;
+            matrix[(i, 2)] = point.z;
+        }
+        matrix
+    }
+
+    fn center_of_gravity(&self) -> Point3<f64> {
+        use cpd::Vector;
+        let mut point = Vector::<U3>::zeros();
+        let matrix = self.matrix();
+        for d in 0..3 {
+            point[d] = matrix.column(d).iter().sum::<f64>() / self.points.len() as f64;
+        }
+        Point3::from_coordinates(point)
+    }
+
+    fn push(&mut self, point: Point) {
+        self.points.push(point);
+    }
+
+    fn extend(&mut self, cell: Option<Cell>) {
+        if let Some(cell) = cell {
+            self.points.extend(cell.points);
+        }
     }
 }
 
@@ -176,9 +220,56 @@ impl Grid {
             let point = point?;
             let c = point.x as i64 / GRID_SIZE;
             let r = point.y as i64 / GRID_SIZE;
-            map.entry((r, c)).or_insert_with(Vec::new).push(point);
+            map.entry((r, c)).or_insert_with(Cell::new).push(point);
         }
+        map.retain(|_, cell| {
+            cell.len() <= MAX_POINTS && cell.center_of_gravity()[2] >= MIN_COG_HEIGHT
+        });
         Ok(Grid { map: map })
+    }
+
+    fn grow_cells(&mut self, other: &mut Grid) {
+        let min_r = self.map.keys().map(|&(r, _)| r).min().unwrap();
+        let max_r = self.map.keys().map(|&(r, _)| r).max().unwrap();
+        let min_c = self.map.keys().map(|&(_, c)| c).min().unwrap();
+        let max_c = self.map.keys().map(|&(_, c)| c).max().unwrap();
+        for r in min_r..(max_r + 1) {
+            for c in min_c..(max_c + 1) {
+                if let Some(a) = self.map.get(&(r, c)).map(|v| v.len()) {
+                    if let Some(b) = self.map.get(&(r, c)).map(|v| v.len()) {
+                        if a < MIN_POINTS || b < MIN_POINTS {
+                            self.grow(r, c);
+                            other.grow(r, c);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn grow(&mut self, r: i64, c: i64) {
+        let mut cell = Cell::new();
+        if let Some(ll) = self.map.remove(&(r, c)) {
+            let grid_size = ll.grid_size;
+            let factor = grid_size / GRID_SIZE;
+            cell.grid_size = grid_size * 2;
+            cell.extend(Some(ll));
+            cell.extend(self.remove(r + factor, c, grid_size));
+            cell.extend(self.remove(r, c + factor, grid_size));
+            cell.extend(self.remove(r + factor, c + factor, grid_size));
+            self.map.insert((r, c), cell);
+        }
+    }
+
+    fn remove(&mut self, r: i64, c: i64, grid_size: i64) -> Option<Cell> {
+        if self.map.get(&(r, c)).is_some() {
+            while self.map.get(&(r, c)).unwrap().grid_size < grid_size {
+                self.grow(r, c);
+            }
+            self.map.remove(&(r, c))
+        } else {
+            None
+        }
     }
 }
 
@@ -215,23 +306,4 @@ fn is_the_moving_path<P: AsRef<Path>>(fixed: DateTime<Utc>, path: P) -> bool {
             duration > Duration::hours(0) && duration < Duration::hours(INTERVAL as i64 + 1)
         })
         .unwrap_or(false)
-}
-
-fn points_to_matrix(points: &Vec<Point>) -> Matrix<U3> {
-    let mut matrix = Matrix::<U3>::zeros(points.len());
-    for (i, point) in points.iter().enumerate() {
-        matrix[(i, 0)] = point.x;
-        matrix[(i, 1)] = point.y;
-        matrix[(i, 2)] = point.z;
-    }
-    matrix
-}
-
-fn center_of_gravity(matrix: &Matrix<U3>) -> Point3<f64> {
-    use cpd::Vector;
-    let mut point = Vector::<U3>::zeros();
-    for d in 0..3 {
-        point[d] = matrix.column(d).iter().sum::<f64>() / matrix.nrows() as f64;
-    }
-    Point3::from_coordinates(point)
 }
