@@ -125,7 +125,7 @@ fn worker(
                 },
                 x: (arg.c * GRID_SIZE) as f64,
                 y: (arg.r * GRID_SIZE) as f64,
-                grid_size: GRID_SIZE,
+                grid_size: arg.before.grid_size,
             });
         }
     }
