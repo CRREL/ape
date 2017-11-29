@@ -116,10 +116,10 @@ fn velocities_to_csv(matches: &ArgMatches) {
     } else if velocities.len() < 100 {
         panic!("Too few velocities: {}", velocities.len());
     }
-    println!("Easting,Northing,Height,Vx,Vy,Vz,V,Before,After");
+    println!("Easting,Northing,Height,Vx,Vy,Vz,V,Vxy,Before,After");
     for velocity in velocities {
         println!(
-            "{},{},{},{},{},{},{},{},{}",
+            "{},{},{},{},{},{},{},{},{},{}",
             velocity.center_of_gravity.x,
             velocity.center_of_gravity.y,
             velocity.center_of_gravity.z,
@@ -129,6 +129,7 @@ fn velocities_to_csv(matches: &ArgMatches) {
             (velocity.velocity.x.powi(2) + velocity.velocity.y.powi(2) +
                 velocity.velocity.z.powi(2))
                 .sqrt(),
+            (velocity.velocity.x.powi(2) + velocity.velocity.y.powi(2)).sqrt(),
             velocity.before_points,
             velocity.after_points,
         );
