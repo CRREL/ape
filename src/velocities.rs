@@ -12,7 +12,7 @@ pub const GRID_SIZE: i64 = 100;
 const INTERVAL: f64 = 6.;
 const MIN_COG_HEIGHT: f64 = 40.;
 const THREADS: usize = 8;
-const MIN_POINTS: usize = 500;
+const MIN_POINTS: usize = 400;
 const MAX_POINTS: usize = 10000;
 const SIGMA2: f64 = 0.01;
 
