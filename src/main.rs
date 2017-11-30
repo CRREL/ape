@@ -107,7 +107,7 @@ fn velocities_create(matches: &ArgMatches) {
 }
 
 fn velocities_to_csv(matches: &ArgMatches) {
-    use ape::velocities::{GRID_SIZE, Velocity};
+    use ape::velocities::Velocity;
     use std::fs::File;
     let infile = File::open(matches.value_of("INFILE").unwrap()).unwrap();
     let velocities: Vec<Velocity> = serde_json::from_reader(infile).unwrap();
@@ -118,25 +118,21 @@ fn velocities_to_csv(matches: &ArgMatches) {
     }
     println!("Easting,Northing,Height,Vx,Vy,Vz,V,Vxy,Before,After");
     for velocity in velocities {
-        for i in 0..(velocity.grid_size / GRID_SIZE) {
-            for j in 0..(velocity.grid_size / GRID_SIZE) {
-                println!(
-                "{},{},{},{},{},{},{},{},{},{}",
-                velocity.x + GRID_SIZE as f64 / 2. + (GRID_SIZE * i) as f64,
-                velocity.y + GRID_SIZE as f64 / 2. + (GRID_SIZE * j) as f64,
-                velocity.center_of_gravity.z,
-                velocity.velocity.x,
-                velocity.velocity.y,
-                velocity.velocity.z,
-                (velocity.velocity.x.powi(2) + velocity.velocity.y.powi(2) +
-                 velocity.velocity.z.powi(2))
-                .sqrt(),
-                (velocity.velocity.x.powi(2) + velocity.velocity.y.powi(2)).sqrt(),
-                velocity.before_points,
-                velocity.after_points,
-                );
-            }
-        }
+        println!(
+            "{},{},{},{},{},{},{},{},{},{}",
+            velocity.center_of_gravity.x,
+            velocity.center_of_gravity.y,
+            velocity.center_of_gravity.z,
+            velocity.velocity.x,
+            velocity.velocity.y,
+            velocity.velocity.z,
+            (velocity.velocity.x.powi(2) + velocity.velocity.y.powi(2) +
+             velocity.velocity.z.powi(2))
+            .sqrt(),
+            (velocity.velocity.x.powi(2) + velocity.velocity.y.powi(2)).sqrt(),
+            velocity.before_points,
+            velocity.after_points,
+        );
     }
 }
 
