@@ -19,6 +19,9 @@ fn main() {
         let adjustment = ape::matrix_from_path(matches.value_of("ADJUSTMENT").unwrap()).unwrap();
         let sop = adjustment * sop;
         println!("{}", ape::string_from_matrix(&sop));
+    } else if let Some(matches) = matches.subcommand_matches("datetime") {
+        let infile = matches.value_of("INFILE").unwrap();
+        println!("{}", ape::datetime_from_path(infile).unwrap());
     } else if let Some(matches) = matches.subcommand_matches("velocities") {
         if let Some(matches) = matches.subcommand_matches("create") {
             let before = matches.value_of("BEFORE").unwrap();

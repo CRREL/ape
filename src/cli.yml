@@ -12,6 +12,13 @@ subcommands:
                 help: The adjustment matrix file.
                 required: true
                 index: 2
+    - datetime:
+        about: Prints the datetime of this file.
+        args:
+            - INFILE:
+                help: The file with the name that holds the datetime.
+                required: true
+                index: 1
     - velocities:
         about: Work with gridded velocity files.
         subcommands:
