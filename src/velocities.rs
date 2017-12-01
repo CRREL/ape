@@ -1,309 +1,329 @@
+use Vector;
 use chrono::{DateTime, Duration, Utc};
-use cpd::{Matrix, Normalize, Rigid, Runner, U3};
+use cpd::Rigid;
 use failure::Error;
-use las::{Point, Reader};
-use nalgebra::Point3;
+use las::Point;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::{Arc, Mutex};
-use std::thread;
 
-pub const GRID_SIZE: i64 = 100;
-const INTERVAL: f64 = 6.;
-const MIN_COG_HEIGHT: f64 = 40.;
-const THREADS: usize = 8;
-const MIN_POINTS: usize = 250;
-const MAX_POINTS: usize = 10000;
-const SIGMA2: f64 = 0.01;
-
+/// The velocity calculation did not converge.
 #[derive(Debug, Fail)]
-#[fail(display = "No moving path for path: {}", _0)]
-struct NoMovingPath(String);
+#[fail(display = "Did not converge")]
+pub struct DidNotConverge {}
 
-pub fn velocities<P: AsRef<Path>>(path: P) -> Result<Vec<Velocity>, Error> {
-    let mut before = Grid::from_path(&path)?;
-    let after_path = moving_path(&path)?;
-    let mut after = Grid::from_path(after_path)?;
-    let rigid = Runner::new()
-        .normalize(Normalize::SameScale)
-        .sigma2(SIGMA2)
-        .rigid()
-        .scale(false);
-    let mut args = Vec::new();
-    for _ in 0..1 {
-        before.grow_cells(&mut after);
-    }
-    for ((r, c), before) in before.map {
-        if let Some(after) = after.map.remove(&(r, c)) {
-            if before.len() >= MIN_POINTS && after.len() >= MIN_POINTS {
-                args.push(Arg {
-                    r: r,
-                    c: c,
-                    before: before,
-                    after: after,
-                });
-            }
-        }
-    }
-    let args = Arc::new(Mutex::new(args));
-    let mut handles = Vec::new();
-    for i in 0..THREADS {
-        let args = args.clone();
-        let rigid = rigid.clone();
-        let path = path.as_ref().to_path_buf();
-        let handle = thread::spawn(move || worker(i, rigid, path, args));
-        handles.push(handle);
-    }
-    let mut velocities = Vec::new();
-    for handle in handles {
-        velocities.extend(handle.join().unwrap()?);
-    }
-    Ok(velocities)
-
-}
-
-struct Arg {
-    r: i64,
-    c: i64,
-    before: Cell,
-    after: Cell,
-}
-
-fn worker(
-    id: usize,
-    rigid: Rigid,
-    path: PathBuf,
-    args: Arc<Mutex<Vec<Arg>>>,
-) -> Result<Vec<Velocity>, Error> {
-    let mut velocities = Vec::new();
-    loop {
-        let arg = {
-            let mut args = args.lock().unwrap();
-            if let Some(arg) = args.pop() {
-                assert_eq!(arg.before.grid_size, arg.after.grid_size);
-                println!(
-                    "#{}: Running grid cell ({}, {}), size {}, with {} before points and {} after points, {} cells remaining",
-                    id,
-                    arg.r,
-                    arg.c,
-                    arg.before.grid_size,
-                    arg.before.len(),
-                    arg.after.len(),
-                    args.len()
-                );
-                arg
-            } else {
-                break;
-            }
-        };
-        let run = rigid.register(&arg.after.matrix(), &arg.before.matrix())?;
-        if run.converged {
-            let point = arg.before.center_of_gravity();
-            let before = arg.before.matrix();
-            let displacement = (0..3)
-                .map(|d| {
-                    (run.moved.column(d) - before.column(d)).iter().sum::<f64>() /
-                        before.nrows() as f64
-                })
-                .collect::<Vec<_>>();
-            let displacement = Point3::new(displacement[0], displacement[1], displacement[2]);
-            let velocity = displacement / INTERVAL;
-            velocities.push(Velocity {
-                center_of_gravity: Vector {
-                    x: point.coords[0],
-                    y: point.coords[1],
-                    z: point.coords[2],
-                },
-                datetime: datetime_from_path(&path)? + Duration::hours(INTERVAL as i64 / 2),
-                before_points: arg.before.len(),
-                after_points: arg.after.len(),
-                iterations: run.iterations,
-                velocity: Vector {
-                    x: velocity[0],
-                    y: velocity[1],
-                    z: velocity[2],
-                },
-                x: (arg.c * GRID_SIZE) as f64,
-                y: (arg.r * GRID_SIZE) as f64,
-                grid_size: arg.before.grid_size,
-            });
-        }
-    }
-    println!("Worker #{} is done", id);
-    Ok(velocities)
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Velocity {
-    pub after_points: usize,
-    pub before_points: usize,
-    pub center_of_gravity: Vector,
-    pub datetime: DateTime<Utc>,
-    pub grid_size: i64,
-    pub iterations: usize,
-    pub velocity: Vector,
-    pub x: f64,
-    pub y: f64,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Vector {
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
-}
-
+/// Calculate velocities over a large area using rigid cpd.
 #[derive(Debug)]
-struct Cell {
-    points: Vec<Point>,
+pub struct Builder {
+    after: Vec<Point>,
+    before: Vec<Point>,
+    datetime: DateTime<Utc>,
+    duration: Duration,
+    grid_size: i64,
+    min_points: usize,
+    ngrow: usize,
+}
+
+/// A grid of cells, used to calculate velocities.
+#[derive(Debug)]
+pub struct Grid {
+    data: HashMap<(i64, i64), Cell>,
+    datetime: DateTime<Utc>,
+    duration: Duration,
+}
+
+/// A cell in a grid.
+#[derive(Debug)]
+pub struct Cell {
+    after: Vec<Point>,
+    before: Vec<Point>,
+    coordinates: (i64, i64),
     grid_size: i64,
 }
 
-#[derive(Debug)]
-struct Grid {
-    map: HashMap<(i64, i64), Cell>,
+/// A velocity measurement.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Velocity {
+    /// The number of points in the after matrix.
+    pub after_points: usize,
+
+    /// The number of points in the before matrix.
+    pub before_points: usize,
+
+    /// The center of gravity of the point.
+    pub center_of_gravity: Vector,
+
+    /// The date and time of this velocity measurement.
+    pub datetime: DateTime<Utc>,
+
+    /// The size of the grid of the cell used for this velocity.
+    pub grid_size: i64,
+
+    /// The number of iterations it took.
+    pub iterations: usize,
+
+    /// The mean displacement between the points, divided by the number of hours in between scans.
+    pub velocity: Vector,
+
+    /// The lower-left corner of the velocity cell, x.
+    pub x: i64,
+
+    /// The lower-left corner of the velocity cell, y.
+    pub y: i64,
 }
 
-impl NoMovingPath {
-    fn new<P: AsRef<Path>>(path: P) -> NoMovingPath {
-        NoMovingPath(path.as_ref().display().to_string())
-    }
+struct Worker {
+    id: usize,
 }
 
-impl Cell {
-    fn new() -> Cell {
-        Cell {
-            points: Vec::new(),
-            grid_size: GRID_SIZE,
+impl Builder {
+    /// Create new velocities from two input las files.
+    pub fn new<P: AsRef<Path>, Q: AsRef<Path>>(
+        before: P,
+        after: Q,
+        grid_size: i64,
+    ) -> Result<Builder, Error> {
+        use las::Reader;
+
+        let before_datetime = super::datetime_from_path(&before)?;
+        let after_datetime = super::datetime_from_path(&after)?;
+        let duration = after_datetime.signed_duration_since(before_datetime);
+        let datetime = before_datetime + duration;
+        let before = Reader::from_path(before)?
+            .points()
+            .collect::<Result<Vec<_>, _>>()?;
+        let after = Reader::from_path(after)?
+            .points()
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Builder {
+            after: after,
+            before: before,
+            datetime: datetime,
+            duration: duration,
+            grid_size: grid_size,
+            min_points: 0,
+            ngrow: 0,
+        })
+    }
+
+    /// Sets the number of times this grid should grow.
+    pub fn ngrow(mut self, ngrow: usize) -> Builder {
+        self.ngrow = ngrow;
+        self
+    }
+
+    /// Sets the minimum number of points allowed in a cell.
+    pub fn min_points(mut self, min_points: usize) -> Builder {
+        self.min_points = min_points;
+        self
+    }
+
+    /// Creates a grid from this builder.
+    pub fn into_grid(self) -> Grid {
+        let mut data: HashMap<(i64, i64), Cell> = HashMap::new();
+        let grid_size = self.grid_size;
+        let min_points = self.min_points;
+        let grid_coordinates =
+            |point: &Point| (point.y as i64 / grid_size, point.x as i64 / grid_size);
+        for point in self.before {
+            let coordinates = grid_coordinates(&point);
+            data.entry(coordinates)
+                .or_insert_with(|| Cell::new(coordinates, grid_size))
+                .before
+                .push(point);
         }
-    }
-
-    fn len(&self) -> usize {
-        self.points.len()
-    }
-
-    fn matrix(&self) -> Matrix<U3> {
-        let mut matrix = Matrix::<U3>::zeros(self.points.len());
-        for (i, point) in self.points.iter().enumerate() {
-            matrix[(i, 0)] = point.x;
-            matrix[(i, 1)] = point.y;
-            matrix[(i, 2)] = point.z;
+        for point in self.after {
+            let coordinates = grid_coordinates(&point);
+            data.entry(coordinates)
+                .or_insert_with(|| Cell::new(coordinates, grid_size))
+                .after
+                .push(point);
         }
-        matrix
-    }
-
-    fn center_of_gravity(&self) -> Point3<f64> {
-        use cpd::Vector;
-        let mut point = Vector::<U3>::zeros();
-        let matrix = self.matrix();
-        for d in 0..3 {
-            point[d] = matrix.column(d).iter().sum::<f64>() / self.points.len() as f64;
+        let mut grid = Grid {
+            data: data,
+            datetime: self.datetime,
+            duration: self.duration,
+        };
+        for _ in 0..self.ngrow {
+            info!("Growing cells");
+            let n = grid.grow(min_points);
+            info!("{} cells grown", n);
         }
-        Point3::from_coordinates(point)
-    }
-
-    fn push(&mut self, point: Point) {
-        self.points.push(point);
-    }
-
-    fn extend(&mut self, cell: Option<Cell>) {
-        if let Some(cell) = cell {
-            self.points.extend(cell.points);
-        }
+        let before = grid.data.len();
+        grid.cull(min_points);
+        let after = grid.data.len();
+        info!("{} cells accepted, {} cells culled", after, before - after);
+        grid
     }
 }
 
 impl Grid {
-    fn from_path<P: AsRef<Path>>(path: P) -> Result<Grid, Error> {
-        let mut map = HashMap::new();
-        for point in Reader::from_path(path)?.points() {
-            let point = point?;
-            let c = point.x as i64 / GRID_SIZE;
-            let r = point.y as i64 / GRID_SIZE;
-            map.entry((r, c)).or_insert_with(Cell::new).push(point);
-        }
-        map.retain(|_, cell| {
-            cell.len() <= MAX_POINTS && cell.center_of_gravity()[2] >= MIN_COG_HEIGHT
-        });
-        Ok(Grid { map: map })
-    }
-
-    fn grow_cells(&mut self, other: &mut Grid) {
-        let min_r = self.map.keys().map(|&(r, _)| r).min().unwrap();
-        let max_r = self.map.keys().map(|&(r, _)| r).max().unwrap();
-        let min_c = self.map.keys().map(|&(_, c)| c).min().unwrap();
-        let max_c = self.map.keys().map(|&(_, c)| c).max().unwrap();
-        for r in min_r..(max_r + 1) {
-            for c in min_c..(max_c + 1) {
-                if let Some(a) = self.map.get(&(r, c)).map(|v| v.len()) {
-                    if let Some(b) = self.map.get(&(r, c)).map(|v| v.len()) {
-                        if a < MIN_POINTS || b < MIN_POINTS {
-                            self.grow(r, c);
-                            other.grow(r, c);
-                        }
-                    }
-                }
+    /// Grow any under-populated grid cells.
+    pub fn grow(&mut self, min_points: usize) -> usize {
+        let mut count = 0;
+        for coordinate in self.coordinates() {
+            if self.cell(coordinate)
+                .map(|c| c.is_too_small(min_points))
+                .unwrap_or(false)
+            {
+                self.grow_cell(coordinate);
+                count += 1;
             }
         }
+        count
     }
 
-    fn grow(&mut self, r: i64, c: i64) {
-        let mut cell = Cell::new();
-        if let Some(ll) = self.map.remove(&(r, c)) {
-            let grid_size = ll.grid_size;
-            let factor = grid_size / GRID_SIZE;
-            cell.grid_size = grid_size * 2;
-            cell.extend(Some(ll));
-            cell.extend(self.remove(r + factor, c, grid_size));
-            cell.extend(self.remove(r, c + factor, grid_size));
-            cell.extend(self.remove(r + factor, c + factor, grid_size));
-            self.map.insert((r, c), cell);
+    /// Calculates velocities for each cell in this grid.
+    pub fn calculate_velocities<T: Into<Option<usize>>, U: Into<Option<f64>>>(
+        self,
+        num_threads: T,
+        sigma2: U,
+    ) -> Result<Vec<Velocity>, Error> {
+        use std::thread;
+        use cpd::{Normalize, Runner};
+
+        let num_threads = num_threads.into().unwrap_or(1);
+        assert!(num_threads > 0);
+        let mut handles = Vec::new();
+        let grid = Arc::new(Mutex::new(self));
+        let rigid = Runner::new()
+            .sigma2(sigma2)
+            .normalize(Normalize::SameScale)
+            .rigid()
+            .scale(false);
+        for i in 0..num_threads {
+            let grid = grid.clone();
+            let rigid = rigid.clone();
+            let handle = thread::spawn(move || {
+                let worker = Worker { id: i };
+                worker.start(grid, rigid)
+            });
+            handles.push(handle);
         }
+        let mut velocities = Vec::new();
+        for handle in handles {
+            let v = handle.join().unwrap();
+            velocities.extend(v?);
+        }
+        Ok(velocities)
     }
 
-    fn remove(&mut self, r: i64, c: i64, grid_size: i64) -> Option<Cell> {
-        if self.map.get(&(r, c)).is_some() {
-            while self.map.get(&(r, c)).unwrap().grid_size < grid_size {
-                self.grow(r, c);
-            }
-            self.map.remove(&(r, c))
+    fn cull(&mut self, min_points: usize) {
+        self.data.retain(|_, cell| !cell.is_too_small(min_points))
+    }
+
+    fn cell(&self, coordinate: (i64, i64)) -> Option<&Cell> {
+        self.data.get(&coordinate)
+    }
+
+    fn pop(&mut self) -> Option<Cell> {
+        if let Some(&key) = self.data.keys().next() {
+            self.data.remove(&key)
         } else {
             None
         }
     }
-}
 
-fn moving_path<P: AsRef<Path>>(path: P) -> Result<PathBuf, Error> {
-    let fixed = datetime_from_path(path.as_ref())?;
-    let error = NoMovingPath::new(path.as_ref());
-    path.as_ref()
-        .parent()
-        .and_then(|parent| parent.read_dir().ok())
-        .and_then(|read_dir| {
-            read_dir.filter_map(|r| r.ok()).find(|dir_entry| {
-                is_the_moving_path(fixed, dir_entry.path())
-            })
-        })
-        .map(|dir_entry| dir_entry.path().to_path_buf())
-        .ok_or(error.into())
-}
+    fn coordinates(&self) -> Vec<(i64, i64)> {
+        let mut coordinates = self.data.keys().map(|&k| k).collect::<Vec<_>>();
+        coordinates.sort();
+        coordinates
+    }
 
-pub fn datetime_from_path<P: AsRef<Path>>(path: P) -> Result<DateTime<Utc>, Error> {
-    use chrono::TimeZone;
-
-    if let Some(file_name) = path.as_ref().file_name().and_then(|f| f.to_str()) {
-        let datetime = Utc.datetime_from_str(&file_name[0..13], "%y%m%d_%H%M%S")?;
-        Ok(datetime)
-    } else {
-        Err(NoMovingPath::new(path.as_ref()).into())
+    fn grow_cell(&mut self, coordinate: (i64, i64)) {
+        let mut cell = self.data.remove(&coordinate).expect(
+            "grow_cell called but cell does not exist",
+        );
+        cell.grid_size *= 2;
+        let (r, c) = coordinate;
+        for k in [(r + 1, c), (r, c + 1), (r + 1, c + 1)].into_iter() {
+            while self.data
+                .get(k)
+                .map(|c| c.grid_size < cell.grid_size / 2)
+                .unwrap_or(false)
+            {
+                self.grow_cell(*k);
+            }
+            if let Some(other) = self.data.remove(k) {
+                cell.consume(other);
+            }
+        }
+        self.data.insert(coordinate, cell);
     }
 }
 
-fn is_the_moving_path<P: AsRef<Path>>(fixed: DateTime<Utc>, path: P) -> bool {
-    datetime_from_path(path)
-        .map(|moving| {
-            let duration = moving.signed_duration_since(fixed);
-            duration > Duration::hours(0) && duration < Duration::hours(INTERVAL as i64 + 1)
-        })
-        .unwrap_or(false)
+impl Cell {
+    fn new(coordinates: (i64, i64), grid_size: i64) -> Cell {
+        Cell {
+            after: Vec::new(),
+            before: Vec::new(),
+            coordinates: coordinates,
+            grid_size: grid_size,
+        }
+    }
+
+    fn is_too_small(&self, min_points: usize) -> bool {
+        self.before.len() < min_points || self.after.len() < min_points
+    }
+
+    fn consume(&mut self, other: Cell) {
+        assert_eq!(self.grid_size, other.grid_size * 2);
+        self.before.extend(other.before);
+        self.after.extend(other.after);
+    }
+
+    fn calculate_velocity(
+        &self,
+        rigid: &Rigid,
+        datetime: DateTime<Utc>,
+        duration: Duration,
+    ) -> Result<Velocity, Error> {
+        let before = super::matrix_from_points(&self.before);
+        let after = super::matrix_from_points(&self.after);
+        let run = rigid.register(&after, &before)?;
+        let displacement = run.moved - &before;
+        if run.converged {
+            Ok(Velocity {
+                after_points: after.nrows(),
+                before_points: before.nrows(),
+                center_of_gravity: super::center_of_gravity(&before),
+                datetime: datetime,
+                grid_size: self.grid_size,
+                iterations: run.iterations,
+                x: self.coordinates.0 * self.grid_size,
+                y: self.coordinates.1 * self.grid_size,
+                velocity: super::center_of_gravity(&displacement) / duration.num_hours() as f64,
+            })
+        } else {
+            Err(DidNotConverge {}.into())
+        }
+    }
+}
+
+impl Worker {
+    fn start(&self, grid: Arc<Mutex<Grid>>, rigid: Rigid) -> Result<Vec<Velocity>, Error> {
+        let (datetime, duration) = {
+            let grid = grid.lock().unwrap();
+            (grid.datetime, grid.duration)
+        };
+        let mut velocities = Vec::new();
+        while let Some(cell) = {
+            let mut grid = grid.lock().unwrap();
+            grid.pop()
+        }
+        {
+            info!(
+                "#{}: Got cell ({}, {}), size: {}, before: {}, after: {}",
+                self.id,
+                cell.coordinates.0,
+                cell.coordinates.1,
+                cell.grid_size,
+                cell.before.len(),
+                cell.after.len(),
+            );
+            velocities.push(cell.calculate_velocity(&rigid, datetime, duration)?);
+        }
+        info!("#{} is done", self.id);
+        Ok(velocities)
+    }
 }

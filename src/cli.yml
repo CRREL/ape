@@ -1,110 +1,60 @@
 name: The Atlas Processing Engine (ape)
 author: Pete Gadomski <pete@gadom.ski>
 subcommands:
-    - cpd:
-        about: Run cpd on two las files, saving the resulting transform to a third file.
+    - sop:
+        about: Print the SOP matrix, as calculated from a reference SOP matrix and an adjustment matrix.
         args:
-            - FIXED:
-                help: The file that isn't moving.
+            - SOP:
+                help: The reference SOP file.
                 required: true
                 index: 1
-            - MOVING:
-                help: The file that is moving.
+            - ADJUSTMENT:
+                help: The adjustment matrix file.
                 required: true
                 index: 2
-            - OUTFILE:
-                help: The location of the resultant translation matrix (in .dat form).
-                required: true
-                index: 3
     - velocities:
-        about: Work with glacier velocities.
+        about: Work with gridded velocity files.
         subcommands:
             - create:
-                about: Create a velocity map from a las file.
+                about: Create a new gridded velocity file.
                 args:
-                    - INFILE:
-                        help: The input file. This is the "moving" file for the velocities. It is expected that there will be a 6hrs later file in the same directory as this file.
+                    - BEFORE:
+                        help: The first file in the sequence (moving).
                         required: true
                         index: 1
-                    - OUTFILE:
-                        help: The output file to hold the velocity information.
+                    - AFTER:
+                        help: The second file in the sequence (fixed).
                         required: true
                         index: 2
+                    - OUTFILE:
+                        help: The file to hold the output velocities.
+                        required: true
+                        index: 3
+                    - grid-size:
+                        help: The size of the grid to use for velocity calculation.
+                        long: grid-size
+                        takes_value: true
+                    - ngrow:
+                        help: The number of times that the underpopulated grid cells should be grown.
+                        long: ngrow
+                        takes_value: true
+                    - min-points:
+                        help: The minimum number of points allowed in each cell.
+                        long: min-points
+                        takes_value: true
+                    - threads:
+                        help: The number of threads to use when calculating velocities.
+                        long: threads
+                        short: t
+                        takes_value: true
+                    - sigma2:
+                        help: The initial sigma2 for the cpd calculation.
+                        long: sigma2
+                        takes_value: true
             - to-csv:
-                about: Print a velocity file as a csv.
+                about: Convert a velocity json to a csv, printed to stdout.
                 args:
                     - INFILE:
-                        help: The input velocity file.
-                        required: true
-                        index: 1
-            - datetime:
-                about: Print the velocity datetime from the file (file datetime plus three hours).
-                args:
-                    - INFILE:
-                        help: The input file.
-                        required: true
-                        index: 1
-    - magic-bucket-config:
-        about: Prints the magic bucket configuration for the provided sop, adjustment, and pop.
-        args:
-            - SOP:
-                help: The sop file.
-                required: true
-                index: 1
-            - ADJUSTMENT:
-                help: The adjustment matrix.
-                required: true
-                index: 2
-            - POP:
-                help: The pop file.
-                required: true
-                index: 3
-    - sop:
-        about: Prints the sop for a file from the sop file and the adjustment file.
-        args:
-            - SOP:
-                help: The sop file.
-                required: true
-                index: 1
-            - ADJUSTMENT:
-                help: The adjustment matrix.
-                required: true
-                index: 2
-    - incl:
-        about: Extract and manipulate rxp inclination data.
-        subcommands:
-            - extract:
-                about: Extracts inclination data from an rxp file.
-                args:
-                    - INFILE:
-                        help: The rxp file.
-                        required: true
-                        index: 1
-                    - OUTFILE:
-                        help: The inclination file.
-                        required: true
-                        index: 2
-                    - sync-to-pps:
-                        long: sync-to-pps
-                        help: Does the input file have to be sync'd to pps?
-            - cat:
-                about: Print all inclination values in one file.
-                args:
-                    - INFILE:
-                        help: The inclination file.
-                        required: true
-                        index: 1
-            - stats:
-                about: Prints statistics about an inclination file in json format.
-                args:
-                    - INFILE:
-                        help: The inclination file.
-                        required: true
-                        index: 1
-            - timeseries:
-                about: Prints all the inclinations in a directory as one long timeseries.
-                args:
-                    - DIRECTORY:
-                        help: The inclination directory.
+                        help: The velocity json file.
                         required: true
                         index: 1
