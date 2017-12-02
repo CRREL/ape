@@ -8,6 +8,8 @@ extern crate log;
 extern crate nalgebra;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate serde_json;
 
 pub mod velocities;
 mod vector;
@@ -16,6 +18,7 @@ use chrono::{DateTime, Utc};
 use failure::Error;
 use las::Point;
 use nalgebra::{Dynamic, MatrixMN, MatrixN, Projective3, U3, U4};
+use serde_json::Value;
 use std::path::Path;
 pub use vector::Vector;
 
@@ -112,4 +115,55 @@ pub fn datetime_from_path<P: AsRef<Path>>(path: P) -> Result<DateTime<Utc>, Erro
     } else {
         Err(DateTimeFromPath(path.as_ref().display().to_string()).into())
     }
+}
+
+/// Returns the magic bucket configuration for the three matrices.
+pub fn magic_bucket_config(
+    sop: &Projective3<f64>,
+    adjustment: &Projective3<f64>,
+    pop: &Projective3<f64>,
+) -> Value {
+    json!({
+        "filters": [
+            {
+                "type": "filters.transformation",
+                "matrix": string_from_matrix(sop.matrix()),
+            },
+            {
+                "type": "filters.transformation",
+                "matrix": string_from_matrix(adjustment.matrix()),
+            },
+            {
+                "type": "filters.transformation",
+                "matrix": string_from_matrix(pop.matrix()),
+            },
+            {
+                "type": "filters.crop",
+                "polygon": "POLYGON ((535508.04019199998584 7356923.27050799969584, 526852.992188 7363507.49072299990803, 533350.83911099995021 7365850.74902299977839, 541962.312012 7365547.070313, 545282.91503899998497 7360871.8720699995756, 542695.264648 7358447.21875, 537531.614136 7357506.45642099995166, 536543.26751699997112 7357541.5081789996475, 535508.04019199998584 7356923.27050799969584))"
+            },
+            {
+                "type": "filters.range",
+                "limits": "Z[0:250]",
+            },
+            {
+                "type": "filters.outlier",
+            },
+            {
+                "type": "filters.colorinterp",
+                "ramp": "pestel_shades",
+                "minimum": 0,
+                "maximum": 175,
+            }
+        ],
+        "output_ext": ".laz",
+        "args": [
+            "--writers.las.scale_x=0.0025",
+            "--writers.las.scale_y=0.0025",
+            "--writers.las.scale_z=0.0025",
+            "--writers.las.offset_x=auto",
+            "--writers.las.offset_y=auto",
+            "--writers.las.offset_z=auto",
+            "--writers.las.a_srs=EPSG:32624+5773",
+        ]
+    })
 }

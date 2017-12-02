@@ -24,6 +24,15 @@ fn main() {
     } else if let Some(matches) = matches.subcommand_matches("datetime") {
         let infile = matches.value_of("INFILE").unwrap();
         println!("{}", ape::datetime_from_path(infile).unwrap());
+    } else if let Some(matches) = matches.subcommand_matches("magic-bucket-config") {
+        let sop = ape::matrix_from_path(matches.value_of("SOP").unwrap()).unwrap();
+        let adjustment = ape::matrix_from_path(matches.value_of("ADJUSTMENT").unwrap()).unwrap();
+        let pop = ape::matrix_from_path(matches.value_of("POP").unwrap()).unwrap();
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&ape::magic_bucket_config(&sop, &adjustment, &pop))
+                .unwrap()
+        );
     } else if let Some(matches) = matches.subcommand_matches("cpd") {
         let rigid = Runner::new()
             .sigma2(value_t!(matches, "sigma2", f64).ok())

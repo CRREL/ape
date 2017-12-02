@@ -19,6 +19,21 @@ subcommands:
                 help: The file with the name that holds the datetime.
                 required: true
                 index: 1
+    - magic-bucket-config:
+        about: Prints the magic bucket configuration for the provided sop, adjustment, and pop.
+        args:
+            - SOP:
+                help: The sop file.
+                required: true
+                index: 1
+            - ADJUSTMENT:
+                help: The adjustment matrix.
+                required: true
+                index: 2
+            - POP:
+                help: The pop file.
+                required: true
+                index: 3
     - cpd:
         about: Run cpd on two las files.
         args:
