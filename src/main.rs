@@ -34,8 +34,12 @@ fn main() {
             let fixed = ape::matrix_from_las_path(matches.value_of("FIXED").unwrap()).unwrap();
             let moving = ape::matrix_from_las_path(matches.value_of("MOVING").unwrap()).unwrap();
             let run = rigid.register(&fixed, &moving).unwrap();
-            let transform3 = run.transform.as_transform3();
-            println!("{}", ape::string_from_matrix(transform3.matrix()));
+            if run.converged {
+                let transform3 = run.transform.as_transform3();
+                println!("{}", ape::string_from_matrix(transform3.matrix()));
+            } else {
+                panic!("Run did not converge");
+            }
         } else if let Some(matches) = matches.subcommand_matches("velocities") {
             if let Some(matches) = matches.subcommand_matches("create") {
                 let before = matches.value_of("BEFORE").unwrap();
