@@ -174,23 +174,17 @@ impl Grid {
     }
 
     /// Calculates velocities for each cell in this grid.
-    pub fn calculate_velocities<T: Into<Option<usize>>, U: Into<Option<f64>>>(
+    pub fn calculate_velocities<T: Into<Option<usize>>>(
         self,
         num_threads: T,
-        sigma2: U,
+        rigid: Rigid,
     ) -> Result<Vec<Velocity>, Error> {
         use std::thread;
-        use cpd::{Normalize, Runner};
 
         let num_threads = num_threads.into().unwrap_or(1);
         assert!(num_threads > 0);
         let mut handles = Vec::new();
         let grid = Arc::new(Mutex::new(self));
-        let rigid = Runner::new()
-            .sigma2(sigma2)
-            .normalize(Normalize::SameScale)
-            .rigid()
-            .scale(false);
         for i in 0..num_threads {
             let grid = grid.clone();
             let rigid = rigid.clone();

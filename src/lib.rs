@@ -15,7 +15,7 @@ mod vector;
 use chrono::{DateTime, Utc};
 use failure::Error;
 use las::Point;
-use nalgebra::{Dynamic, MatrixMN, Projective3, U3};
+use nalgebra::{Dynamic, MatrixMN, MatrixN, Projective3, U3, U4};
 use std::path::Path;
 pub use vector::Vector;
 
@@ -56,6 +56,15 @@ pub fn matrix_from_path<P: AsRef<Path>>(path: P) -> Result<Projective3<f64>, Err
     Ok(Projective3::from_matrix_unchecked(matrix.transpose()))
 }
 
+/// Returns a matrix from a las path.
+pub fn matrix_from_las_path<P: AsRef<Path>>(path: P) -> Result<MatrixMN<f64, Dynamic, U3>, Error> {
+    use las::Reader;
+    let points = Reader::from_path(path)?
+        .points()
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(matrix_from_points(&points))
+}
+
 /// Creates a dat string from a matrix.
 ///
 /// # Examples
@@ -64,10 +73,10 @@ pub fn matrix_from_path<P: AsRef<Path>>(path: P) -> Result<Projective3<f64>, Err
 /// let matrix = ape::matrix_from_path("data/sop.dat").unwrap();
 /// let string = ape::string_from_matrix(&matrix);
 /// ```
-pub fn string_from_matrix(matrix: &Projective3<f64>) -> String {
+pub fn string_from_matrix(matrix: &MatrixN<f64, U4>) -> String {
     let mut string = String::new();
     for i in 0..4 {
-        let row = matrix.matrix().row(i);
+        let row = matrix.row(i);
         string.push_str(&format!("{} {} {} {}\n", row[0], row[1], row[2], row[3]));
     }
     string

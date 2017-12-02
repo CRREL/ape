@@ -19,49 +19,64 @@ subcommands:
                 help: The file with the name that holds the datetime.
                 required: true
                 index: 1
-    - velocities:
-        about: Work with gridded velocity files.
+    - cpd:
+        about: Run cpd on two las files.
+        args:
+            - sigma2:
+                help: The initial sigma2 for the cpd calculation.
+                long: sigma2
+                takes_value: true
         subcommands:
-            - create:
-                about: Create a new gridded velocity file.
+            - simple:
+                about: Simple cpd on two files, printing the transform to the output.
                 args:
-                    - BEFORE:
-                        help: The first file in the sequence (moving).
+                    - FIXED:
+                        help: The file that isn't moving.
                         required: true
                         index: 1
-                    - AFTER:
-                        help: The second file in the sequence (fixed).
+                    - MOVING:
+                        help: The file that is moving.
                         required: true
                         index: 2
-                    - OUTFILE:
-                        help: The file to hold the output velocities.
-                        required: true
-                        index: 3
-                    - grid-size:
-                        help: The size of the grid to use for velocity calculation.
-                        long: grid-size
-                        takes_value: true
-                    - ngrow:
-                        help: The number of times that the underpopulated grid cells should be grown.
-                        long: ngrow
-                        takes_value: true
-                    - min-points:
-                        help: The minimum number of points allowed in each cell.
-                        long: min-points
-                        takes_value: true
-                    - threads:
-                        help: The number of threads to use when calculating velocities.
-                        long: threads
-                        short: t
-                        takes_value: true
-                    - sigma2:
-                        help: The initial sigma2 for the cpd calculation.
-                        long: sigma2
-                        takes_value: true
-            - to-csv:
-                about: Convert a velocity json to a csv, printed to stdout.
-                args:
-                    - INFILE:
-                        help: The velocity json file.
-                        required: true
-                        index: 1
+            - velocities:
+                about: Work with gridded velocity files.
+                subcommands:
+                    - create:
+                        about: Create a new gridded velocity file from two input files.
+                        args:
+                            - BEFORE:
+                                help: The first file in the sequence (moving).
+                                required: true
+                                index: 1
+                            - AFTER:
+                                help: The second file in the sequence (fixed).
+                                required: true
+                                index: 2
+                            - OUTFILE:
+                                help: The file to hold the output velocities.
+                                required: true
+                                index: 3
+                            - grid-size:
+                                help: The size of the grid to use for velocity calculation.
+                                long: grid-size
+                                takes_value: true
+                            - ngrow:
+                                help: The number of times that the underpopulated grid cells should be grown.
+                                long: ngrow
+                                takes_value: true
+                            - min-points:
+                                help: The minimum number of points allowed in each cell.
+                                long: min-points
+                                takes_value: true
+                            - threads:
+                                help: The number of threads to use when calculating velocities.
+                                long: threads
+                                short: t
+                                takes_value: true
+                    - to-csv:
+                        about: Convert a velocity json to a csv, printed to stdout.
+                        args:
+                            - INFILE:
+                                help: The velocity json file.
+                                required: true
+                                index: 1
