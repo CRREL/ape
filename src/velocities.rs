@@ -66,10 +66,10 @@ pub struct Velocity {
     pub velocity: Vector,
 
     /// The lower-left corner of the velocity cell, x.
-    pub x: i64,
+    pub x: f64,
 
     /// The lower-left corner of the velocity cell, y.
-    pub y: i64,
+    pub y: f64,
 }
 
 struct Worker {
@@ -284,8 +284,8 @@ impl Cell {
                 datetime: datetime,
                 grid_size: self.grid_size,
                 iterations: run.iterations,
-                x: self.coordinates.0 * self.grid_size,
-                y: self.coordinates.1 * self.grid_size,
+                x: (self.coordinates.0 * self.grid_size) as f64,
+                y: (self.coordinates.1 * self.grid_size) as f64,
                 velocity: super::center_of_gravity(&displacement) / duration.num_hours() as f64,
             })
         } else {
