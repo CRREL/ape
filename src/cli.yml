@@ -99,3 +99,7 @@ subcommands:
                                 help: The maximum number of iterations allowed.
                                 long: max-iterations
                                 takes_value: true
+                            - max-velocity:
+                                help: The max allowed velocity before being filtered.
+                                long: max-velocity
+                                takes_value: true

@@ -72,11 +72,17 @@ fn main() {
                 let max_iterations = matches.value_of("max-iterations").map(|s| {
                     s.parse::<usize>().unwrap()
                 });
+                let max_velocity = matches.value_of("max-velocity").map(|s| {
+                    s.parse::<f64>().unwrap()
+                });
                 println!("x,y,z,grid_size,iterations,vx,vy,vz,vxy,v");
                 for velocity in velocities {
                     if max_iterations.map(|m| velocity.iterations < m).unwrap_or(
                         true,
-                    )
+                    ) &&
+                        max_velocity
+                            .map(|m| velocity.velocity.magnitude() < m)
+                            .unwrap_or(true)
                     {
                         println!("{},{},{},{},{},{},{},{},{},{}",
                                  velocity.center_of_gravity.x,
