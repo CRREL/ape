@@ -2,7 +2,7 @@ use std::iter::FromIterator;
 use std::ops::Div;
 
 /// A three-dimensional vector.
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
 pub struct Vector {
     pub x: f64,
     pub y: f64,
@@ -10,6 +10,16 @@ pub struct Vector {
 }
 
 impl Vector {
+    pub fn mean(vectors: &Vec<Vector>) -> Vector {
+        vectors.iter().fold(Vector::default(), |acc, v| {
+            Vector {
+                x: acc.x + v.x / vectors.len() as f64,
+                y: acc.y + v.y / vectors.len() as f64,
+                z: acc.z + v.z / vectors.len() as f64,
+            }
+        })
+    }
+
     pub fn xy(&self) -> f64 {
         (self.x * self.x + self.y * self.y).sqrt()
     }

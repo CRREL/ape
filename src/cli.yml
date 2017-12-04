@@ -103,3 +103,14 @@ subcommands:
                                 help: The max allowed velocity before being filtered.
                                 long: max-velocity
                                 takes_value: true
+                    - line:
+                        about: Return stats from a horizontal line.
+                        args:
+                            - DIRECTORY:
+                                help: The directory to pull velocity information from.
+                                required: true
+                                index: 1
+                            - NORTHING:
+                                help: The y coordinate of the line.
+                                required: true
+                                index: 2

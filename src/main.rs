@@ -98,6 +98,68 @@ fn main() {
                                  );
                     }
                 }
+            } else if let Some(matches) = matches.subcommand_matches("line") {
+                use std::collections::HashMap;
+                use std::fs;
+                use ape::Vector;
+
+                let directory = matches.value_of("DIRECTORY").unwrap();
+                let northing = matches
+                    .value_of("NORTHING")
+                    .unwrap()
+                    .parse::<f64>()
+                    .unwrap();
+                let mut map = HashMap::new();
+                for (velocity, datetime) in
+                    fs::read_dir(directory)
+                        .unwrap()
+                        .filter_map(|r| {
+                            r.ok().and_then(|dir_entry| if dir_entry
+                                .path()
+                                .extension()
+                                .map(|e| e == "json")
+                                .unwrap_or(false)
+                            {
+                                serde_json::from_reader::<_, Vec<velocities::Velocity>>(
+                                    File::open(dir_entry.path()).unwrap(),
+                                ).ok()
+                                    .map(
+                                        |v| (v, ape::datetime_from_path(dir_entry.path()).unwrap()),
+                                    )
+                            } else {
+                                None
+                            })
+                        })
+                        .flat_map(|(v, datetime)| {
+                            v.into_iter().filter(|v| v.y == northing).map(move |v| {
+                                (v, datetime)
+                            })
+                        })
+                {
+                    let entry = map.entry(velocity.x as i64).or_insert_with(Vec::new);
+                    entry.push((velocity, datetime));
+                }
+                println!("datetime,x,vx,vy,vz,vxy,v,dvx,dvy,dvz,dvxy,dv");
+                for (_, cell) in map {
+                    let mean = Vector::mean(&cell.iter().map(|&(ref v, _)| v.velocity).collect());
+                    for (velocity, datetime) in cell {
+                        println!("{},{},{},{},{},{},{},{},{},{},{},{}",
+                                 datetime,
+                                 velocity.x,
+                                 velocity.velocity.x,
+                                 velocity.velocity.y,
+                                 velocity.velocity.z,
+                                 velocity.velocity.xy(),
+                                 velocity.velocity.magnitude(),
+                                 velocity.velocity.x - mean.x,
+                                 velocity.velocity.y - mean.y,
+                                 velocity.velocity.z - mean.z,
+                                 velocity.velocity.xy() - mean.xy(),
+                                 velocity.velocity.magnitude() - mean.magnitude(),
+                                 )
+                    }
+
+                }
             }
         }
     }
