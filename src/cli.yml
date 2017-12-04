@@ -95,3 +95,7 @@ subcommands:
                                 help: The velocity json file.
                                 required: true
                                 index: 1
+                            - max-iterations:
+                                help: The maximum number of iterations allowed.
+                                long: max-iterations
+                                takes_value: true

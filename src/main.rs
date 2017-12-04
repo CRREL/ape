@@ -69,20 +69,28 @@ fn main() {
                 let infile = File::open(matches.value_of("INFILE").unwrap()).unwrap();
                 let velocities: Vec<velocities::Velocity> = serde_json::from_reader(infile)
                     .unwrap();
+                let max_iterations = matches.value_of("max-iterations").map(|s| {
+                    s.parse::<usize>().unwrap()
+                });
                 println!("x,y,z,grid_size,iterations,vx,vy,vz,vxy,v");
                 for velocity in velocities {
-                    println!("{},{},{},{},{},{},{},{},{},{}",
-                             velocity.center_of_gravity.x,
-                             velocity.center_of_gravity.y,
-                             velocity.center_of_gravity.z,
-                             velocity.grid_size,
-                             velocity.iterations,
-                             velocity.velocity.x,
-                             velocity.velocity.y,
-                             velocity.velocity.z,
-                             velocity.velocity.xy(),
-                             velocity.velocity.magnitude(),
-                             );
+                    if max_iterations.map(|m| velocity.iterations < m).unwrap_or(
+                        true,
+                    )
+                    {
+                        println!("{},{},{},{},{},{},{},{},{},{}",
+                                 velocity.center_of_gravity.x,
+                                 velocity.center_of_gravity.y,
+                                 velocity.center_of_gravity.z,
+                                 velocity.grid_size,
+                                 velocity.iterations,
+                                 velocity.velocity.x,
+                                 velocity.velocity.y,
+                                 velocity.velocity.z,
+                                 velocity.velocity.xy(),
+                                 velocity.velocity.magnitude(),
+                                 );
+                    }
                 }
             }
         }
