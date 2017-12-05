@@ -9,7 +9,9 @@ use ape::velocities;
 use clap::App;
 use cpd::{Normalize, Runner};
 use std::fs::File;
-use std::io::Write;
+use std::io::{BufRead, BufReader, Write};
+
+const FORMAT_STR: &'static str = "%y%m%d_%H%M%S";
 
 fn main() {
     env_logger::init().unwrap();
@@ -24,6 +26,36 @@ fn main() {
     } else if let Some(matches) = matches.subcommand_matches("datetime") {
         let infile = matches.value_of("INFILE").unwrap();
         println!("{}", ape::datetime_from_path(infile).unwrap());
+    } else if let Some(matches) = matches.subcommand_matches("has-pair") {
+        let infile = matches.value_of("INFILE").unwrap();
+        let interval = matches
+            .value_of("INTERVAL")
+            .unwrap()
+            .parse::<f64>()
+            .unwrap();
+        let buffer = matches
+            .value_of("buffer")
+            .unwrap_or("1")
+            .parse::<f64>()
+            .unwrap();
+        let datetimes = BufReader::new(File::open(infile).unwrap())
+            .lines()
+            .map(|l| ape::datetime_from_path(l.unwrap()).unwrap())
+            .collect::<Vec<_>>();
+        for &datetime in datetimes.iter() {
+            if let Some(other) = datetimes.iter().find(|other| {
+                let duration = other.signed_duration_since(datetime).num_minutes() as f64 / 60. -
+                    interval;
+                duration > 0. && duration < buffer
+            })
+            {
+                println!(
+                    "{} {}",
+                    datetime.format(FORMAT_STR),
+                    other.format(FORMAT_STR)
+                );
+            }
+        }
     } else if let Some(matches) = matches.subcommand_matches("magic-bucket-config") {
         let sop = ape::matrix_from_path(matches.value_of("SOP").unwrap()).unwrap();
         let adjustment = ape::matrix_from_path(matches.value_of("ADJUSTMENT").unwrap()).unwrap();

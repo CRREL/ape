@@ -34,6 +34,21 @@ subcommands:
                 help: The pop file.
                 required: true
                 index: 3
+    - pairs:
+        about: Reads a list of files (or just Riegl timestamps) and prints a list of those stamps that have a "later" partner within the given time interval and buffer.
+        args:
+            - INFILE:
+                help: The file that contains the file names.
+                required: true
+                index: 1
+            - INTERVAL:
+                help: The hour interval between pairs.
+                required: true
+                index: 2
+            - buffer:
+                help: The hour buffer around the interval to accept.
+                long: buffer
+                takes_value: true
     - cpd:
         about: Run cpd on two las files.
         args:
