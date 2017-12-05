@@ -26,7 +26,7 @@ fn main() {
     } else if let Some(matches) = matches.subcommand_matches("datetime") {
         let infile = matches.value_of("INFILE").unwrap();
         println!("{}", ape::datetime_from_path(infile).unwrap());
-    } else if let Some(matches) = matches.subcommand_matches("has-pair") {
+    } else if let Some(matches) = matches.subcommand_matches("pairs") {
         let infile = matches.value_of("INFILE").unwrap();
         let interval = matches
             .value_of("INTERVAL")
@@ -46,7 +46,7 @@ fn main() {
             if let Some(other) = datetimes.iter().find(|other| {
                 let duration = other.signed_duration_since(datetime).num_minutes() as f64 / 60. -
                     interval;
-                duration > 0. && duration < buffer
+                duration.abs() < buffer
             })
             {
                 println!(
@@ -194,5 +194,7 @@ fn main() {
                 }
             }
         }
+    } else {
+        panic!("Invalid command");
     }
 }
