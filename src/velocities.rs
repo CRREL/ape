@@ -218,6 +218,10 @@ impl Grid {
         }
     }
 
+    fn len(&self) -> usize {
+        self.data.len()
+    }
+
     fn coordinates(&self) -> Vec<(i64, i64)> {
         let mut coordinates = self.data.keys().map(|&k| k).collect::<Vec<_>>();
         coordinates.sort();
@@ -301,14 +305,16 @@ impl Worker {
             (grid.datetime, grid.duration)
         };
         let mut velocities = Vec::new();
-        while let Some(cell) = {
-            let mut grid = grid.lock().unwrap();
-            grid.pop()
-        }
+        while let Some((cell, remaining)) =
+            {
+                let mut grid = grid.lock().unwrap();
+                grid.pop().map(|cell| (cell, grid.len()))
+            }
         {
             info!(
-                "#{}: Got cell ({}, {}), size: {}, before: {}, after: {}",
+                "#{} [{} remaining]: Got cell ({}, {}), size: {}, before: {}, after: {}",
                 self.id,
+                remaining,
                 cell.coordinates.0,
                 cell.coordinates.1,
                 cell.grid_size,
