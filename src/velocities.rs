@@ -178,7 +178,7 @@ impl Grid {
         self,
         num_threads: T,
         rigid: Rigid,
-    ) -> Result<Vec<Velocity>, Error> {
+    ) -> Vec<Result<Velocity, Error>> {
         use std::thread;
 
         let num_threads = num_threads.into().unwrap_or(1);
@@ -197,9 +197,9 @@ impl Grid {
         let mut velocities = Vec::new();
         for handle in handles {
             let v = handle.join().unwrap();
-            velocities.extend(v?);
+            velocities.extend(v);
         }
-        Ok(velocities)
+        velocities
     }
 
     fn cull(&mut self, min_points: usize) {
@@ -299,7 +299,7 @@ impl Cell {
 }
 
 impl Worker {
-    fn start(&self, grid: Arc<Mutex<Grid>>, rigid: Rigid) -> Result<Vec<Velocity>, Error> {
+    fn start(&self, grid: Arc<Mutex<Grid>>, rigid: Rigid) -> Vec<Result<Velocity, Error>> {
         let (datetime, duration) = {
             let grid = grid.lock().unwrap();
             (grid.datetime, grid.duration)
@@ -321,9 +321,9 @@ impl Worker {
                 cell.before.len(),
                 cell.after.len(),
             );
-            velocities.push(cell.calculate_velocity(&rigid, datetime, duration)?);
+            velocities.push(cell.calculate_velocity(&rigid, datetime, duration));
         }
         info!("#{} is done", self.id);
-        Ok(velocities)
+        velocities
     }
 }

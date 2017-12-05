@@ -94,7 +94,9 @@ fn main() {
                 let mut file = File::create(matches.value_of("OUTFILE").unwrap()).unwrap();
                 let velocities =
                     grid.calculate_velocities(value_t!(matches, "threads", usize).ok(), rigid)
-                        .unwrap();
+                        .into_iter()
+                        .filter_map(|v| v.ok())
+                        .collect::<Vec<_>>();
                 let string = serde_json::to_string(&velocities).unwrap();
                 write!(file, "{}", string).unwrap();
             } else if let Some(matches) = matches.subcommand_matches("to-csv") {
