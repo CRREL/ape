@@ -118,6 +118,10 @@ subcommands:
                                 help: The max allowed velocity before being filtered.
                                 long: max-velocity
                                 takes_value: true
+                            - min-height:
+                                help: The min height of the center of gravity.
+                                long: min-height
+                                takes_value: true
                     - line:
                         about: Return stats from a horizontal line.
                         args:

@@ -109,6 +109,9 @@ fn main() {
                 let max_velocity = matches.value_of("max-velocity").map(|s| {
                     s.parse::<f64>().unwrap()
                 });
+                let min_height = matches.value_of("min-height").map(
+                    |s| s.parse::<f64>().unwrap(),
+                );
                 println!("x,y,z,grid_size,iterations,vx,vy,vz,vxy,v");
                 for velocity in velocities {
                     if max_iterations.map(|m| velocity.iterations < m).unwrap_or(
@@ -116,6 +119,9 @@ fn main() {
                     ) &&
                         max_velocity
                             .map(|m| velocity.velocity.magnitude() < m)
+                            .unwrap_or(true) &&
+                        min_height
+                            .map(|m| velocity.center_of_gravity.z > m)
                             .unwrap_or(true)
                     {
                         println!("{},{},{},{},{},{},{},{},{},{}",
