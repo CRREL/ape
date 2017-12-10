@@ -171,9 +171,9 @@ fn main() {
                             })
                         })
                         .flat_map(|(v, datetime)| {
-                            v.into_iter().filter(|v| v.y == northing).map(move |v| {
-                                (v, datetime)
-                            })
+                            v.into_iter()
+                                .filter(|v| v.y == northing && v.grid_size == 100)
+                                .map(move |v| (v, datetime))
                         })
                 {
                     let entry = map.entry(velocity.x as i64).or_insert_with(Vec::new);
