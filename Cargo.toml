@@ -8,4 +8,5 @@ authors = ["Pete Gadomski <pete.gadomski@gmail.com>"]
 clap = { version = "2.32", features = ["yaml"] }
 las = "0.6"
 nalgebra = "0.16"
+pbr = "1.0"
 spade = "1.6"
