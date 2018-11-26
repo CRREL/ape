@@ -25,7 +25,7 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
     moving: Q,
 ) -> Result<Ape, Error> {
     let (fixed, moving) = read_las_files(fixed, moving)?;
-
+    let cells = Cells::new(config);
     unimplemented!()
 }
 
@@ -33,7 +33,25 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
 pub struct Ape {}
 
 #[derive(Debug, Default, Deserialize)]
-pub struct Config {}
+pub struct Config {
+    minx: i32,
+    miny: i32,
+    maxx: i32,
+    maxy: i32,
+    step: usize,
+}
+
+#[derive(Debug, Default, Serialize)]
+pub struct Cells(Vec<Cell>);
+
+#[derive(Debug, Default, Serialize)]
+pub struct Cell {
+    /// The x coordinate of the center of the cell.
+    x: f64,
+
+    /// The y coordinate of the center of the cell.
+    y: f64,
+}
 
 struct Reader {
     progress_bar: ProgressBar<Pipe>,
@@ -73,6 +91,27 @@ impl Reader {
         }
         self.progress_bar.finish();
         Ok(rtree)
+    }
+}
+
+impl Cells {
+    fn new(config: Config) -> Cells {
+        let mut cells = Vec::new();
+        for y in (config.miny..config.maxy).step_by(config.step) {
+            for x in (config.minx..config.maxx).step_by(config.step) {
+                cells.push(Cell::new(x, y, config.step));
+            }
+        }
+        Cells(cells)
+    }
+}
+
+impl Cell {
+    fn new(x: i32, y: i32, step: usize) -> Cell {
+        Cell {
+            x: f64::from(x) + step as f64 / 2.,
+            y: f64::from(y) + step as f64 / 2.,
+        }
     }
 }
 
