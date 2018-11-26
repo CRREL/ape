@@ -15,7 +15,10 @@ use spade::rtree::RTree;
 use std::fs::File;
 use std::io::{BufReader, Read, Stdout};
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{
+    mpsc::{self, Sender},
+    Arc,
+};
 use std::thread;
 use std::time::Duration;
 
@@ -33,10 +36,12 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
     let fixed = Arc::new(fixed);
     let moving = Arc::new(moving);
     let mut handles = Vec::new();
+    let (tx, rx) = mpsc::channel();
     for i in 0..config.threads {
         let fixed = Arc::clone(&fixed);
         let moving = Arc::clone(&moving);
-        let handle = thread::spawn(move || create_worker(i, fixed, moving));
+        let tx = tx.clone();
+        let handle = thread::spawn(move || create_worker(i, fixed, moving, tx));
         handles.push(handle);
     }
     for handle in handles {
@@ -57,6 +62,8 @@ pub struct Config {
     step: usize,
     threads: usize,
 }
+
+pub struct Point {}
 
 struct Reader {
     progress_bar: ProgressBar<Pipe>,
@@ -126,6 +133,11 @@ fn read_las_files<P: AsRef<Path>, Q: AsRef<Path>>(
     Ok((fixed, moving))
 }
 
-fn create_worker(_id: usize, _fixed: Arc<RTree<Point3<f64>>>, _moving: Arc<RTree<Point3<f64>>>) {
+fn create_worker(
+    _id: usize,
+    _fixed: Arc<RTree<Point3<f64>>>,
+    _moving: Arc<RTree<Point3<f64>>>,
+    tx: Sender<Point>,
+) {
     unimplemented!()
 }
