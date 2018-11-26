@@ -1,8 +1,13 @@
+extern crate failure;
 extern crate las;
 extern crate nalgebra;
 extern crate pbr;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 extern crate spade;
 
+use failure::Error;
 use nalgebra::Point3;
 use pbr::{MultiBar, Pipe, ProgressBar};
 use spade::rtree::RTree;
@@ -14,40 +19,41 @@ use std::time::Duration;
 
 const PROGRESS_BAR_MAX_REFRESH_RATE_MS: u64 = 100;
 
-/// An ATLAS processing engine.
-#[derive(Debug)]
-pub struct Ape {
-    fixed: RTree<Point3<f64>>,
-    moving: RTree<Point3<f64>>,
+/// Run the ATLAS processing engine.
+pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
+    config: Config,
+    fixed: P,
+    moving: Q,
+) -> Result<Grid, Error> {
+    let mut multi_bar = MultiBar::new();
+    multi_bar.println("Reading las files into RTrees");
+    let mut fixed = Reader::new(fixed, &mut multi_bar)?;
+    let fixed = thread::spawn(move || fixed.build());
+    let mut moving = Reader::new(moving, &mut multi_bar)?;
+    let moving = thread::spawn(move || moving.build());
+    thread::spawn(move || {
+        multi_bar.listen();
+    });
+    let fixed = fixed.join().unwrap()?;
+    let moving = moving.join().unwrap()?;
+
+    Ok(Grid::new(config, fixed, moving))
 }
+
+#[derive(Debug, Default, Deserialize)]
+pub struct Config {}
+
+#[derive(Debug, Serialize)]
+pub struct Grid {}
 
 struct Reader {
     progress_bar: ProgressBar<Pipe>,
     reader: las::Reader<BufReader<File>>,
 }
 
-impl Ape {
-    /// Creates a new processing engine from two las files.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let ape = ape::Ape("fixtures/fixed.las", "fixtures/moving.las");
-    /// ```
-    pub fn new<P: AsRef<Path>, Q: AsRef<Path>>(fixed: P, moving: Q) -> Result<Ape, las::Error> {
-        let mut multi_bar = MultiBar::new();
-        multi_bar.println("Reading las files into RTrees");
-        let mut fixed = Reader::new(fixed, &mut multi_bar)?;
-        let fixed = thread::spawn(move || fixed.build());
-        let mut moving = Reader::new(moving, &mut multi_bar)?;
-        let moving = thread::spawn(move || moving.build());
-        thread::spawn(move || {
-            multi_bar.listen();
-        });
-        Ok(Ape {
-            fixed: fixed.join().unwrap()?,
-            moving: moving.join().unwrap()?,
-        })
+impl Grid {
+    fn new(config: Config, fixed: RTree<Point3<f64>>, moving: RTree<Point3<f64>>) -> Grid {
+        unimplemented!()
     }
 }
 
