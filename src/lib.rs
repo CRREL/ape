@@ -35,25 +35,23 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
     println!("{} sample points", sample_points.len());
     let (fixed, moving) = read_las_files(fixed, moving)?;
 
+    println!("");
+    println!("Calculating velocities with {} workers", config.threads);
+    let mut pb = ProgressBar::new(sample_points.len() as u64);
     let sample_points = Arc::new(Mutex::new(sample_points));
     let fixed = Arc::new(fixed);
     let moving = Arc::new(moving);
     let (tx, rx) = mpsc::channel();
-    let mut handles = Vec::new();
-    for i in 0..config.threads {
+    for _ in 0..config.threads {
         let sample_points = Arc::clone(&sample_points);
         let fixed = Arc::clone(&fixed);
         let moving = Arc::clone(&moving);
         let tx = tx.clone();
-        let handle = thread::spawn(move || create_worker(i, sample_points, fixed, moving, tx));
-        handles.push(handle);
+        thread::spawn(move || create_worker(sample_points, fixed, moving, tx));
     }
-    let mut cells = Vec::new();
-    for cell in rx {
-        cells.push(cell);
-    }
-    for handle in handles {
-        handle.join().unwrap();
+    drop(tx);
+    for _cell in rx {
+        pb.inc();
     }
     Ok(Ape {})
 }
@@ -155,11 +153,20 @@ fn read_las_files<P: AsRef<Path>, Q: AsRef<Path>>(
 }
 
 fn create_worker(
-    _id: usize,
-    _sample_points: Arc<Mutex<Vec<(f64, f64)>>>,
+    sample_points: Arc<Mutex<Vec<(f64, f64)>>>,
     _fixed: Arc<RTree<Point3<f64>>>,
     _moving: Arc<RTree<Point3<f64>>>,
-    _tx: Sender<Cell>,
+    tx: Sender<Cell>,
 ) {
-    unimplemented!()
+    loop {
+        let sample_point = {
+            let mut sample_points = sample_points.lock().unwrap();
+            sample_points.pop()
+        };
+        if let Some(_sample_point) = sample_point {
+            tx.send(Cell {}).unwrap();
+        } else {
+            return;
+        }
+    }
 }
