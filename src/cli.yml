@@ -9,3 +9,7 @@ args:
         help: A las file holding the moving points.
         required: true
         index: 2
+    - OUTFILE:
+        help: The output JSON file.
+        required: true
+        index: 3

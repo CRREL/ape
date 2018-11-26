@@ -19,42 +19,25 @@ use std::time::Duration;
 
 const PROGRESS_BAR_MAX_REFRESH_RATE_MS: u64 = 100;
 
-/// Run the ATLAS processing engine.
 pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
     config: Config,
     fixed: P,
     moving: Q,
-) -> Result<Grid, Error> {
-    let mut multi_bar = MultiBar::new();
-    multi_bar.println("Reading las files into RTrees");
-    let mut fixed = Reader::new(fixed, &mut multi_bar)?;
-    let fixed = thread::spawn(move || fixed.build());
-    let mut moving = Reader::new(moving, &mut multi_bar)?;
-    let moving = thread::spawn(move || moving.build());
-    thread::spawn(move || {
-        multi_bar.listen();
-    });
-    let fixed = fixed.join().unwrap()?;
-    let moving = moving.join().unwrap()?;
+) -> Result<Ape, Error> {
+    let (fixed, moving) = read_las_files(fixed, moving)?;
 
-    Ok(Grid::new(config, fixed, moving))
+    unimplemented!()
 }
+
+#[derive(Debug, Default, Serialize)]
+pub struct Ape {}
 
 #[derive(Debug, Default, Deserialize)]
 pub struct Config {}
 
-#[derive(Debug, Serialize)]
-pub struct Grid {}
-
 struct Reader {
     progress_bar: ProgressBar<Pipe>,
     reader: las::Reader<BufReader<File>>,
-}
-
-impl Grid {
-    fn new(config: Config, fixed: RTree<Point3<f64>>, moving: RTree<Point3<f64>>) -> Grid {
-        unimplemented!()
-    }
 }
 
 impl Reader {
@@ -91,4 +74,22 @@ impl Reader {
         self.progress_bar.finish();
         Ok(rtree)
     }
+}
+
+fn read_las_files<P: AsRef<Path>, Q: AsRef<Path>>(
+    fixed: P,
+    moving: Q,
+) -> Result<(RTree<Point3<f64>>, RTree<Point3<f64>>), las::Error> {
+    let mut multi_bar = MultiBar::new();
+    multi_bar.println("Reading las files into RTrees");
+    let mut fixed = Reader::new(fixed, &mut multi_bar)?;
+    let fixed = thread::spawn(move || fixed.build());
+    let mut moving = Reader::new(moving, &mut multi_bar)?;
+    let moving = thread::spawn(move || moving.build());
+    thread::spawn(move || {
+        multi_bar.listen();
+    });
+    let fixed = fixed.join().unwrap()?;
+    let moving = moving.join().unwrap()?;
+    Ok((fixed, moving))
 }
