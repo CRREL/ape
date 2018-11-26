@@ -11,7 +11,7 @@ extern crate toml;
 use failure::Error;
 use nalgebra::Point3;
 use pbr::{MultiBar, Pipe, ProgressBar};
-use spade::rtree::RTree;
+use spade::rtree;
 use std::fs::File;
 use std::io::{BufReader, Read, Stdout};
 use std::path::Path;
@@ -23,6 +23,7 @@ use std::thread;
 use std::time::Duration;
 
 const PROGRESS_BAR_MAX_REFRESH_RATE_MS: u64 = 100;
+type RTree = rtree::RTree<Point3<f64>>;
 
 pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
     config: Config,
@@ -47,19 +48,23 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
         let fixed = Arc::clone(&fixed);
         let moving = Arc::clone(&moving);
         let tx = tx.clone();
-        thread::spawn(move || create_worker(sample_points, fixed, moving, tx));
+        thread::spawn(move || create_worker(config, sample_points, fixed, moving, tx));
     }
     drop(tx);
-    for _cell in rx {
+    let mut cells = Vec::new();
+    for cell in rx {
+        cells.push(cell);
         pb.inc();
     }
-    Ok(Ape {})
+    Ok(Ape { cells: cells })
 }
 
-#[derive(Debug, Default, Serialize)]
-pub struct Ape {}
+#[derive(Debug, Serialize)]
+pub struct Ape {
+    cells: Vec<Cell>,
+}
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct Config {
     minx: i32,
     miny: i32,
@@ -69,7 +74,11 @@ pub struct Config {
     threads: usize,
 }
 
-pub struct Cell {}
+#[derive(Debug, Serialize)]
+pub struct Cell {
+    x: f64,
+    y: f64,
+}
 
 struct Reader {
     progress_bar: ProgressBar<Pipe>,
@@ -122,7 +131,7 @@ impl Reader {
         })
     }
 
-    fn build(&mut self) -> Result<RTree<Point3<f64>>, las::Error> {
+    fn build(&mut self) -> Result<RTree, las::Error> {
         let mut rtree = RTree::new();
         for point in self.reader.points() {
             let point = point?;
@@ -134,10 +143,17 @@ impl Reader {
         Ok(rtree)
     }
 }
+
+impl Cell {
+    fn new(config: Config, fixed: &RTree, moving: &RTree, x: f64, y: f64) -> Cell {
+        unimplemented!()
+    }
+}
+
 fn read_las_files<P: AsRef<Path>, Q: AsRef<Path>>(
     fixed: P,
     moving: Q,
-) -> Result<(RTree<Point3<f64>>, RTree<Point3<f64>>), las::Error> {
+) -> Result<(RTree, RTree), las::Error> {
     let mut multi_bar = MultiBar::new();
     multi_bar.println("Reading las files into RTrees");
     let mut fixed = Reader::new(fixed, &mut multi_bar)?;
@@ -153,9 +169,10 @@ fn read_las_files<P: AsRef<Path>, Q: AsRef<Path>>(
 }
 
 fn create_worker(
+    config: Config,
     sample_points: Arc<Mutex<Vec<(f64, f64)>>>,
-    _fixed: Arc<RTree<Point3<f64>>>,
-    _moving: Arc<RTree<Point3<f64>>>,
+    fixed: Arc<RTree>,
+    moving: Arc<RTree>,
     tx: Sender<Cell>,
 ) {
     loop {
@@ -163,8 +180,9 @@ fn create_worker(
             let mut sample_points = sample_points.lock().unwrap();
             sample_points.pop()
         };
-        if let Some(_sample_point) = sample_point {
-            tx.send(Cell {}).unwrap();
+        if let Some((x, y)) = sample_point {
+            let cell = Cell::new(config, &fixed, &moving, x, y);
+            tx.send(cell).unwrap();
         } else {
             return;
         }
