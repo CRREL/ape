@@ -17,7 +17,7 @@ use std::io::{BufReader, Read, Stdout};
 use std::path::Path;
 use std::sync::{
     mpsc::{self, Sender},
-    Arc,
+    Arc, Mutex,
 };
 use std::thread;
 use std::time::Duration;
@@ -31,18 +31,26 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
 ) -> Result<Ape, Error> {
     println!("Running the ATLAS Processing Engine with configuration:");
     println!("{}", toml::ser::to_string_pretty(&config)?);
+    let sample_points = config.sample_points();
+    println!("{} sample points", sample_points.len());
     let (fixed, moving) = read_las_files(fixed, moving)?;
 
+    let sample_points = Arc::new(Mutex::new(sample_points));
     let fixed = Arc::new(fixed);
     let moving = Arc::new(moving);
-    let mut handles = Vec::new();
     let (tx, rx) = mpsc::channel();
+    let mut handles = Vec::new();
     for i in 0..config.threads {
+        let sample_points = Arc::clone(&sample_points);
         let fixed = Arc::clone(&fixed);
         let moving = Arc::clone(&moving);
         let tx = tx.clone();
-        let handle = thread::spawn(move || create_worker(i, fixed, moving, tx));
+        let handle = thread::spawn(move || create_worker(i, sample_points, fixed, moving, tx));
         handles.push(handle);
+    }
+    let mut cells = Vec::new();
+    for cell in rx {
+        cells.push(cell);
     }
     for handle in handles {
         handle.join().unwrap();
@@ -63,7 +71,7 @@ pub struct Config {
     threads: usize,
 }
 
-pub struct Point {}
+pub struct Cell {}
 
 struct Reader {
     progress_bar: ProgressBar<Pipe>,
@@ -77,6 +85,19 @@ impl Config {
         file.read_to_string(&mut string)?;
         let config: Config = toml::de::from_str(&string)?;
         Ok(config)
+    }
+
+    fn sample_points(&self) -> Vec<(f64, f64)> {
+        let mut points = Vec::new();
+        for x in (self.minx..self.maxx).step_by(self.step) {
+            for y in (self.miny..self.maxy).step_by(self.step) {
+                let step = self.step as f64;
+                let x = f64::from(x) + step / 2.;
+                let y = f64::from(y) + step / 2.;
+                points.push((x, y));
+            }
+        }
+        points
     }
 }
 
@@ -135,9 +156,10 @@ fn read_las_files<P: AsRef<Path>, Q: AsRef<Path>>(
 
 fn create_worker(
     _id: usize,
+    _sample_points: Arc<Mutex<Vec<(f64, f64)>>>,
     _fixed: Arc<RTree<Point3<f64>>>,
     _moving: Arc<RTree<Point3<f64>>>,
-    tx: Sender<Point>,
+    _tx: Sender<Cell>,
 ) {
     unimplemented!()
 }
