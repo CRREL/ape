@@ -15,6 +15,7 @@ use spade::rtree::RTree;
 use std::fs::File;
 use std::io::{BufReader, Read, Stdout};
 use std::path::Path;
+use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
@@ -27,10 +28,21 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
 ) -> Result<Ape, Error> {
     println!("Running the ATLAS Processing Engine with configuration:");
     println!("{}", toml::ser::to_string_pretty(&config)?);
-    let cells = Cells::new(config);
-    println!("Cell count: {}", cells.0.len());
     let (fixed, moving) = read_las_files(fixed, moving)?;
-    unimplemented!()
+
+    let fixed = Arc::new(fixed);
+    let moving = Arc::new(moving);
+    let mut handles = Vec::new();
+    for i in 0..config.threads {
+        let fixed = Arc::clone(&fixed);
+        let moving = Arc::clone(&moving);
+        let handle = thread::spawn(move || create_worker(i, fixed, moving));
+        handles.push(handle);
+    }
+    for handle in handles {
+        handle.join().unwrap();
+    }
+    Ok(Ape {})
 }
 
 #[derive(Debug, Default, Serialize)]
@@ -43,18 +55,7 @@ pub struct Config {
     maxx: i32,
     maxy: i32,
     step: usize,
-}
-
-#[derive(Debug, Default, Serialize)]
-pub struct Cells(Vec<Cell>);
-
-#[derive(Debug, Default, Serialize)]
-pub struct Cell {
-    /// The x coordinate of the center of the cell.
-    x: f64,
-
-    /// The y coordinate of the center of the cell.
-    y: f64,
+    threads: usize,
 }
 
 struct Reader {
@@ -107,28 +108,6 @@ impl Reader {
         Ok(rtree)
     }
 }
-
-impl Cells {
-    fn new(config: Config) -> Cells {
-        let mut cells = Vec::new();
-        for y in (config.miny..config.maxy).step_by(config.step) {
-            for x in (config.minx..config.maxx).step_by(config.step) {
-                cells.push(Cell::new(x, y, config.step));
-            }
-        }
-        Cells(cells)
-    }
-}
-
-impl Cell {
-    fn new(x: i32, y: i32, step: usize) -> Cell {
-        Cell {
-            x: f64::from(x) + step as f64 / 2.,
-            y: f64::from(y) + step as f64 / 2.,
-        }
-    }
-}
-
 fn read_las_files<P: AsRef<Path>, Q: AsRef<Path>>(
     fixed: P,
     moving: Q,
@@ -145,4 +124,8 @@ fn read_las_files<P: AsRef<Path>, Q: AsRef<Path>>(
     let fixed = fixed.join().unwrap()?;
     let moving = moving.join().unwrap()?;
     Ok((fixed, moving))
+}
+
+fn create_worker(_id: usize, _fixed: Arc<RTree<Point3<f64>>>, _moving: Arc<RTree<Point3<f64>>>) {
+    unimplemented!()
 }
