@@ -35,16 +35,16 @@ impl Ape {
     pub fn new<P: AsRef<Path>, Q: AsRef<Path>>(fixed: P, moving: Q) -> Result<Ape, las::Error> {
         let mut multi_bar = MultiBar::new();
         multi_bar.println("Reading las files into RTrees");
-        let mut reader = Reader::new(fixed, &mut multi_bar)?;
-        let fixed_handle = thread::spawn(move || reader.build());
-        let mut reader = Reader::new(moving, &mut multi_bar)?;
-        let moving_handle = thread::spawn(move || reader.build());
+        let mut fixed = Reader::new(fixed, &mut multi_bar)?;
+        let fixed = thread::spawn(move || fixed.build());
+        let mut moving = Reader::new(moving, &mut multi_bar)?;
+        let moving = thread::spawn(move || moving.build());
         thread::spawn(move || {
             multi_bar.listen();
         });
         Ok(Ape {
-            fixed: fixed_handle.join().unwrap()?,
-            moving: moving_handle.join().unwrap()?,
+            fixed: fixed.join().unwrap()?,
+            moving: moving.join().unwrap()?,
         })
     }
 }
