@@ -6,13 +6,14 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate spade;
+extern crate toml;
 
 use failure::Error;
 use nalgebra::Point3;
 use pbr::{MultiBar, Pipe, ProgressBar};
 use spade::rtree::RTree;
 use std::fs::File;
-use std::io::{BufReader, Stdout};
+use std::io::{BufReader, Read, Stdout};
 use std::path::Path;
 use std::thread;
 use std::time::Duration;
@@ -24,15 +25,18 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
     fixed: P,
     moving: Q,
 ) -> Result<Ape, Error> {
-    let (fixed, moving) = read_las_files(fixed, moving)?;
+    println!("Running the ATLAS Processing Engine with configuration:");
+    println!("{}", toml::ser::to_string_pretty(&config)?);
     let cells = Cells::new(config);
+    println!("Cell count: {}", cells.0.len());
+    let (fixed, moving) = read_las_files(fixed, moving)?;
     unimplemented!()
 }
 
 #[derive(Debug, Default, Serialize)]
 pub struct Ape {}
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
     minx: i32,
     miny: i32,
@@ -56,6 +60,16 @@ pub struct Cell {
 struct Reader {
     progress_bar: ProgressBar<Pipe>,
     reader: las::Reader<BufReader<File>>,
+}
+
+impl Config {
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Config, Error> {
+        let mut file = File::open(path)?;
+        let mut string = String::new();
+        file.read_to_string(&mut string)?;
+        let config: Config = toml::de::from_str(&string)?;
+        Ok(config)
+    }
 }
 
 impl Reader {
