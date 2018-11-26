@@ -1,0 +1,11 @@
+name: ape
+about: The ATLAS Processing Engine
+args:
+    - FIXED:
+        help: A las file holding the fixed points.
+        required: true
+        index: 1
+    - MOVING:
+        help: A las file holding the moving points.
+        required: true
+        index: 2
