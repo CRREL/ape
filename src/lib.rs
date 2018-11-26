@@ -12,6 +12,8 @@ use std::path::Path;
 use std::thread;
 use std::time::Duration;
 
+const PROGRESS_BAR_MAX_REFRESH_RATE_MS: u64 = 100;
+
 /// An ATLAS processing engine.
 #[derive(Debug)]
 pub struct Ape {
@@ -56,7 +58,9 @@ impl Reader {
     ) -> Result<Reader, las::Error> {
         let reader = las::Reader::from_path(&path)?;
         let mut progress_bar = multi_bar.create_bar(reader.header().number_of_points());
-        progress_bar.set_max_refresh_rate(Some(Duration::from_millis(100)));
+        progress_bar.set_max_refresh_rate(Some(Duration::from_millis(
+            PROGRESS_BAR_MAX_REFRESH_RATE_MS,
+        )));
         progress_bar.message(&format!(
             "{}: ",
             path.as_ref()
