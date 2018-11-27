@@ -1,7 +1,11 @@
 //! Read las data for import and use.
 
-use las_rs::Error;
+use las_rs::{Error, Reader as LasReader};
+use nalgebra::Point3;
+use pbr::MultiBar;
 use std::path::{Path, PathBuf};
+use std::thread::{self, JoinHandle};
+use std::time::Duration;
 use RTree;
 
 const PROGRESS_BAR_MAX_REFRESH_RATE_MS: u64 = 100;
@@ -52,6 +56,31 @@ impl Reader {
     /// assert_eq!(2, rtrees.len());
     /// ```
     pub fn read(&self) -> Result<Vec<RTree>, Error> {
-        unimplemented!()
+        let mut multi_bar = MultiBar::new();
+        multi_bar.println(&format!("Reading {} las files:", self.paths.len()));
+        let mut handles = Vec::new();
+        for path in &self.paths {
+            let mut reader = LasReader::from_path(path)?;
+            let mut progress_bar = multi_bar.create_bar(reader.header().number_of_points());
+            progress_bar.set_max_refresh_rate(Some(Duration::from_millis(
+                PROGRESS_BAR_MAX_REFRESH_RATE_MS,
+            )));
+            let handle: JoinHandle<Result<RTree, Error>> = thread::spawn(move || {
+                let mut rtree = RTree::new();
+                for point in reader.points() {
+                    let point = point?;
+                    let point = Point3::new(point.x, point.y, point.z);
+                    rtree.insert(point);
+                    progress_bar.inc();
+                }
+                Ok(rtree)
+            });
+            handles.push(handle);
+        }
+        let mut rtrees = Vec::new();
+        for handle in handles {
+            rtrees.push(handle.join().unwrap()?);
+        }
+        Ok(rtrees)
     }
 }
