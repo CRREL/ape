@@ -18,10 +18,7 @@ use failure::Error;
 use las::Reader;
 use nalgebra::Point3;
 use std::path::Path;
-use std::sync::{
-    mpsc::{self, Sender},
-    Arc, Mutex,
-};
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 
 type RTree = spade::rtree::RTree<Point3<f64>>;
@@ -36,18 +33,17 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
         toml::ser::to_string_pretty(&config)?
     );
 
-    let sample_points = config.sample_points();
-    println!(
-        "We will be looking for velocities at {} sample points.\n",
-        sample_points.len()
-    );
-
     let reader = Reader::new().add_path(fixed).add_path(moving);
     let mut rtrees = reader.read()?;
     let moving = rtrees.pop().unwrap();
     let fixed = rtrees.pop().unwrap();
 
-    println!("Calculating velocities with {} workers", config.threads);
+    let sample_points = config.sample_points();
+    println!(
+        "\nCalculating velocities at {} points with {} workers.",
+        sample_points.len(),
+        config.threads
+    );
     let sample_points = Arc::new(Mutex::new(sample_points));
     let fixed = Arc::new(fixed);
     let moving = Arc::new(moving);
@@ -57,7 +53,18 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
         let fixed = fixed.clone();
         let moving = moving.clone();
         let tx = tx.clone();
-        thread::spawn(move || create_worker(config, sample_points, fixed, moving, tx));
+        thread::spawn(move || loop {
+            let sample_point = {
+                let mut sample_points = sample_points.lock().unwrap();
+                sample_points.pop()
+            };
+            if let Some((x, y)) = sample_point {
+                let cell = Cell::new(config, &fixed, &moving, x, y);
+                tx.send(cell).unwrap();
+            } else {
+                return;
+            }
+        });
     }
     drop(tx);
     let mut cells = Vec::new();
@@ -79,28 +86,7 @@ pub struct Cell {
 }
 
 impl Cell {
-    fn new(_config: Config, _fixed: &RTree, _moving: &RTree, _x: f64, _y: f64) -> Cell {
-        unimplemented!()
-    }
-}
-
-fn create_worker(
-    config: Config,
-    sample_points: Arc<Mutex<Vec<(f64, f64)>>>,
-    fixed: Arc<RTree>,
-    moving: Arc<RTree>,
-    tx: Sender<Cell>,
-) {
-    loop {
-        let sample_point = {
-            let mut sample_points = sample_points.lock().unwrap();
-            sample_points.pop()
-        };
-        if let Some((x, y)) = sample_point {
-            let cell = Cell::new(config, &fixed, &moving, x, y);
-            tx.send(cell).unwrap();
-        } else {
-            return;
-        }
+    fn new(_config: Config, _fixed: &RTree, _moving: &RTree, x: f64, y: f64) -> Cell {
+        Cell { x: x, y: y }
     }
 }
