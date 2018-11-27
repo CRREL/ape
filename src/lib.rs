@@ -1,5 +1,5 @@
 extern crate failure;
-extern crate las;
+extern crate las as las_rs;
 extern crate nalgebra;
 extern crate pbr;
 extern crate serde;
@@ -8,20 +8,20 @@ extern crate serde_derive;
 extern crate spade;
 extern crate toml;
 
+pub mod las;
+
 use failure::Error;
+use las::Reader;
 use nalgebra::Point3;
-use pbr::{MultiBar, Pipe, ProgressBar};
 use std::fs::File;
-use std::io::{BufReader, Read, Stdout};
+use std::io::Read;
 use std::path::Path;
 use std::sync::{
     mpsc::{self, Sender},
     Arc, Mutex,
 };
 use std::thread;
-use std::time::Duration;
 
-const PROGRESS_BAR_MAX_REFRESH_RATE_MS: u64 = 100;
 type RTree = spade::rtree::RTree<Point3<f64>>;
 
 pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
@@ -33,19 +33,22 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
     println!("{}", toml::ser::to_string_pretty(&config)?);
     let sample_points = config.sample_points();
     println!("{} sample points", sample_points.len());
-    let (fixed, moving) = read_las_files(fixed, moving)?;
+
+    let reader = Reader::new().add_path(fixed).add_path(moving);
+    let mut rtrees = reader.read()?;
+    let moving = rtrees.pop().unwrap();
+    let fixed = rtrees.pop().unwrap();
 
     println!("");
     println!("Calculating velocities with {} workers", config.threads);
-    let mut pb = ProgressBar::new(sample_points.len() as u64);
     let sample_points = Arc::new(Mutex::new(sample_points));
     let fixed = Arc::new(fixed);
     let moving = Arc::new(moving);
     let (tx, rx) = mpsc::channel();
     for _ in 0..config.threads {
         let sample_points = Arc::clone(&sample_points);
-        let fixed = Arc::clone(&fixed);
-        let moving = Arc::clone(&moving);
+        let fixed = fixed.clone();
+        let moving = moving.clone();
         let tx = tx.clone();
         thread::spawn(move || create_worker(config, sample_points, fixed, moving, tx));
     }
@@ -53,7 +56,6 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
     let mut cells = Vec::new();
     for cell in rx {
         cells.push(cell);
-        pb.inc();
     }
     Ok(Ape { cells: cells })
 }
@@ -79,11 +81,6 @@ pub struct Cell {
     y: f64,
 }
 
-struct Reader {
-    progress_bar: ProgressBar<Pipe>,
-    reader: las::Reader<BufReader<File>>,
-}
-
 impl Config {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Config, Error> {
         let mut file = File::open(path)?;
@@ -107,64 +104,10 @@ impl Config {
     }
 }
 
-impl Reader {
-    fn new<P: AsRef<Path>>(
-        path: P,
-        multi_bar: &mut MultiBar<Stdout>,
-    ) -> Result<Reader, las::Error> {
-        let reader = las::Reader::from_path(&path)?;
-        let mut progress_bar = multi_bar.create_bar(reader.header().number_of_points());
-        progress_bar.set_max_refresh_rate(Some(Duration::from_millis(
-            PROGRESS_BAR_MAX_REFRESH_RATE_MS,
-        )));
-        progress_bar.message(&format!(
-            "{}: ",
-            path.as_ref()
-                .file_name()
-                .map(|s| s.to_string_lossy().into_owned())
-                .unwrap_or_else(String::new)
-        ));
-        Ok(Reader {
-            progress_bar: progress_bar,
-            reader: reader,
-        })
-    }
-
-    fn build(&mut self) -> Result<RTree, las::Error> {
-        let mut rtree = RTree::new();
-        for point in self.reader.points() {
-            let point = point?;
-            let point = Point3::new(point.x, point.y, point.z);
-            rtree.insert(point);
-            self.progress_bar.inc();
-        }
-        self.progress_bar.finish();
-        Ok(rtree)
-    }
-}
-
 impl Cell {
-    fn new(config: Config, fixed: &RTree, moving: &RTree, x: f64, y: f64) -> Cell {
+    fn new(_config: Config, _fixed: &RTree, _moving: &RTree, _x: f64, _y: f64) -> Cell {
         unimplemented!()
     }
-}
-
-fn read_las_files<P: AsRef<Path>, Q: AsRef<Path>>(
-    fixed: P,
-    moving: Q,
-) -> Result<(RTree, RTree), las::Error> {
-    let mut multi_bar = MultiBar::new();
-    multi_bar.println("Reading las files into RTrees");
-    let mut fixed = Reader::new(fixed, &mut multi_bar)?;
-    let fixed = thread::spawn(move || fixed.build());
-    let mut moving = Reader::new(moving, &mut multi_bar)?;
-    let moving = thread::spawn(move || moving.build());
-    thread::spawn(move || {
-        multi_bar.listen();
-    });
-    let fixed = fixed.join().unwrap()?;
-    let moving = moving.join().unwrap()?;
-    Ok((fixed, moving))
 }
 
 fn create_worker(
