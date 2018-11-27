@@ -30,6 +30,9 @@ pub struct Config {
 
     /// The minimum number of points in a circle of radius `step` around each sample points.
     pub min_points_in_circle: usize,
+
+    /// The number of points to be used for the CPD calculation.
+    pub num_points: usize,
 }
 
 impl Config {

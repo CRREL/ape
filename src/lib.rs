@@ -1,3 +1,4 @@
+extern crate cpd;
 extern crate failure;
 extern crate las as las_rs;
 extern crate nalgebra;
@@ -16,9 +17,12 @@ mod point;
 pub use config::Config;
 pub use point::Point;
 
+use cpd::Matrix;
 use failure::Error;
 use las::Reader;
+use nalgebra::U3;
 use pbr::MultiBar;
+use std::f64::consts::PI;
 use std::path::Path;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
@@ -72,14 +76,25 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
             if let Some(sample_point) = sample_point {
                 progress_bar.message("Lookup in circle: ");
                 progress_bar.tick();
-                let fixed_in_circle = fixed.lookup_in_circle(&sample_point, &radius);
-                let moving_in_circle = moving.lookup_in_circle(&sample_point, &radius);
+                let fixed_density =
+                    fixed.lookup_in_circle(&sample_point, &radius).len() as f64 / (PI * radius);
+                let moving_density =
+                    moving.lookup_in_circle(&sample_point, &radius).len() as f64 / (PI * radius);
+
+                let run = if fixed_density > 0. && moving_density > 0. {
+                    let fixed =
+                        nearest_n_neighbors_as_matrix(&fixed, &sample_point, config.num_points);
+                    let moving =
+                        nearest_n_neighbors_as_matrix(&moving, &sample_point, config.num_points);
+                } else {
+                    None
+                };
 
                 let cell = Cell {
                     x: sample_point.x(),
                     y: sample_point.y(),
-                    fixed_points_in_circle: fixed_in_circle.len(),
-                    moving_points_in_circle: moving_in_circle.len(),
+                    fixed_density: fixed_density,
+                    moving_density: moving_density,
                 };
                 tx.send(cell).unwrap();
             } else {
@@ -106,6 +121,10 @@ pub struct Ape {
 pub struct Cell {
     x: f64,
     y: f64,
-    fixed_points_in_circle: usize,
-    moving_points_in_circle: usize,
+    fixed_density: f64,
+    moving_density: f64,
+}
+
+fn nearest_n_neighbors_as_matrix(rtree: &RTree, query_point: &Point, n: usize) -> Matrix<U3> {
+    unimplemented!()
 }
