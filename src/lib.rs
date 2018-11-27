@@ -60,14 +60,14 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
         let fixed = fixed.clone();
         let moving = moving.clone();
         let tx = tx.clone();
-        let _progress_bar = multi_bar.create_bar(config.max_iterations);
+        let progress_bar = multi_bar.create_bar(config.max_iterations);
         thread::spawn(move || loop {
             let sample_point = {
                 let mut sample_points = sample_points.lock().unwrap();
                 sample_points.pop()
             };
             if let Some((x, y)) = sample_point {
-                let cell = Cell::new(config, &fixed, &moving, x, y);
+                let cell = Cell { x: x, y: y };
                 tx.send(cell).unwrap();
             } else {
                 return;
@@ -93,10 +93,4 @@ pub struct Ape {
 pub struct Cell {
     x: f64,
     y: f64,
-}
-
-impl Cell {
-    fn new(_config: Config, _fixed: &RTree, _moving: &RTree, x: f64, y: f64) -> Cell {
-        Cell { x: x, y: y }
-    }
 }
