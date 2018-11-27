@@ -1,12 +1,11 @@
 //! Read las data for import and use.
 
 use las_rs::{Error, Reader as LasReader};
-use nalgebra::Point3;
 use pbr::MultiBar;
 use std::path::{Path, PathBuf};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
-use RTree;
+use {Point, RTree};
 
 const PROGRESS_BAR_MAX_REFRESH_RATE_MS: u64 = 100;
 
@@ -75,7 +74,7 @@ impl Reader {
                 let mut rtree = RTree::new();
                 for point in reader.points() {
                     let point = point?;
-                    let point = Point3::new(point.x, point.y, point.z);
+                    let point = Point::new(point.x, point.y, point.z);
                     rtree.insert(point);
                     progress_bar.inc();
                 }

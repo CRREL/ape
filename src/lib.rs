@@ -11,18 +11,19 @@ extern crate toml;
 pub mod las;
 
 mod config;
+mod point;
 
 pub use config::Config;
+pub use point::Point;
 
 use failure::Error;
 use las::Reader;
-use nalgebra::Point3;
 use pbr::MultiBar;
 use std::path::Path;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 
-type RTree = spade::rtree::RTree<Point3<f64>>;
+type RTree = spade::rtree::RTree<Point>;
 
 pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
     config: Config,
