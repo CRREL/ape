@@ -17,8 +17,6 @@ pub use config::Config;
 use failure::Error;
 use las::Reader;
 use nalgebra::Point3;
-use std::fs::File;
-use std::io::Read;
 use std::path::Path;
 use std::sync::{
     mpsc::{self, Sender},
@@ -78,29 +76,6 @@ pub struct Ape {
 pub struct Cell {
     x: f64,
     y: f64,
-}
-
-impl Config {
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Config, Error> {
-        let mut file = File::open(path)?;
-        let mut string = String::new();
-        file.read_to_string(&mut string)?;
-        let config: Config = toml::de::from_str(&string)?;
-        Ok(config)
-    }
-
-    fn sample_points(&self) -> Vec<(f64, f64)> {
-        let mut points = Vec::new();
-        for x in (self.minx..self.maxx).step_by(self.step) {
-            for y in (self.miny..self.maxy).step_by(self.step) {
-                let step = self.step as f64;
-                let x = f64::from(x) + step / 2.;
-                let y = f64::from(y) + step / 2.;
-                points.push((x, y));
-            }
-        }
-        points
-    }
 }
 
 impl Cell {
