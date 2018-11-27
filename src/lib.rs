@@ -10,6 +10,10 @@ extern crate toml;
 
 pub mod las;
 
+mod config;
+
+pub use config::Config;
+
 use failure::Error;
 use las::Reader;
 use nalgebra::Point3;
@@ -68,16 +72,6 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
 #[derive(Debug, Serialize)]
 pub struct Ape {
     cells: Vec<Cell>,
-}
-
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
-pub struct Config {
-    minx: i32,
-    miny: i32,
-    maxx: i32,
-    maxy: i32,
-    step: usize,
-    threads: usize,
 }
 
 #[derive(Debug, Serialize)]
