@@ -74,21 +74,12 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
                 progress_bar.tick();
                 let fixed_in_circle = fixed.lookup_in_circle(&sample_point, &radius);
                 let moving_in_circle = moving.lookup_in_circle(&sample_point, &radius);
-                let status = if fixed_in_circle.len() < config.min_points_in_circle
-                    || moving_in_circle.len() < config.min_points_in_circle
-                {
-                    Status::TooFewPointsInCircle {
-                        fixed: fixed_in_circle.len(),
-                        moving: moving_in_circle.len(),
-                    }
-                } else {
-                    unimplemented!()
-                };
 
                 let cell = Cell {
                     x: sample_point.x(),
                     y: sample_point.y(),
-                    status: status,
+                    fixed_points_in_circle: fixed_in_circle.len(),
+                    moving_points_in_circle: moving_in_circle.len(),
                 };
                 tx.send(cell).unwrap();
             } else {
@@ -115,10 +106,6 @@ pub struct Ape {
 pub struct Cell {
     x: f64,
     y: f64,
-    status: Status,
-}
-
-#[derive(Debug, Serialize)]
-pub enum Status {
-    TooFewPointsInCircle { fixed: usize, moving: usize },
+    fixed_points_in_circle: usize,
+    moving_points_in_circle: usize,
 }
