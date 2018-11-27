@@ -65,6 +65,12 @@ impl Reader {
             progress_bar.set_max_refresh_rate(Some(Duration::from_millis(
                 PROGRESS_BAR_MAX_REFRESH_RATE_MS,
             )));
+            progress_bar.message(&format!(
+                "{}: ",
+                path.file_name()
+                    .map(|s| s.to_string_lossy().into_owned())
+                    .unwrap_or_else(String::new)
+            ));
             let handle: JoinHandle<Result<RTree, Error>> = thread::spawn(move || {
                 let mut rtree = RTree::new();
                 for point in reader.points() {
@@ -77,6 +83,7 @@ impl Reader {
             });
             handles.push(handle);
         }
+        thread::spawn(move || multi_bar.listen());
         let mut rtrees = Vec::new();
         for handle in handles {
             rtrees.push(handle.join().unwrap()?);

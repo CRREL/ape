@@ -29,17 +29,22 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
     fixed: P,
     moving: Q,
 ) -> Result<Ape, Error> {
-    println!("Running the ATLAS Processing Engine with configuration:");
-    println!("{}", toml::ser::to_string_pretty(&config)?);
+    println!(
+        "Welcome to the ATLAS Processing Engine.\n\nConfiguration:\n{}",
+        toml::ser::to_string_pretty(&config)?
+    );
+
     let sample_points = config.sample_points();
-    println!("{} sample points", sample_points.len());
+    println!(
+        "We will be looking for velocities at {} sample points.\n",
+        sample_points.len()
+    );
 
     let reader = Reader::new().add_path(fixed).add_path(moving);
     let mut rtrees = reader.read()?;
     let moving = rtrees.pop().unwrap();
     let fixed = rtrees.pop().unwrap();
 
-    println!("");
     println!("Calculating velocities with {} workers", config.threads);
     let sample_points = Arc::new(Mutex::new(sample_points));
     let fixed = Arc::new(fixed);
