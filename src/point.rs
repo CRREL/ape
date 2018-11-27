@@ -19,6 +19,21 @@ impl Point {
     pub fn new(x: f64, y: f64, z: f64) -> Point {
         Point(Point3::new(x, y, z))
     }
+
+    /// Returns the x value.
+    pub fn x(&self) -> f64 {
+        self.0.x
+    }
+
+    /// Returns the y value.
+    pub fn y(&self) -> f64 {
+        self.0.y
+    }
+
+    /// Returns the z value.
+    pub fn z(&self) -> f64 {
+        self.0.z
+    }
 }
 
 impl PointN for Point {

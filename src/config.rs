@@ -2,6 +2,7 @@ use failure::Error;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use Point;
 
 /// Processing engine configuration.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
@@ -26,6 +27,9 @@ pub struct Config {
 
     /// The maximum number of iterations for each CPD run.
     pub max_iterations: u64,
+
+    /// The minimum number of points in a circle of radius `step` around each sample points.
+    pub min_points_in_circle: usize,
 }
 
 impl Config {
@@ -47,8 +51,9 @@ impl Config {
 
     /// Return a grid of sample points, as determined by this configuration.
     ///
-    /// The grid is just a vector of (x, y) tuples. The points are centered in the middle of the
-    /// "rectangles" defined by the min/max coordinates and the steps.
+    /// The grid is just a vector of points, with x and y values set and z set to zero. The points
+    /// are centered in the middle of the "rectangles" defined by the min/max coordinates and the
+    /// steps.
     ///
     /// # Examples
     ///
@@ -57,14 +62,14 @@ impl Config {
     /// let config = Config::from_path("src/config.toml").unwrap();
     /// let sample_points = config.sample_points();
     /// ```
-    pub fn sample_points(&self) -> Vec<(f64, f64)> {
+    pub fn sample_points(&self) -> Vec<Point> {
         let mut points = Vec::new();
         for x in (self.minx..self.maxx).step_by(self.step) {
             for y in (self.miny..self.maxy).step_by(self.step) {
                 let step = self.step as f64;
                 let x = f64::from(x) + step / 2.;
                 let y = f64::from(y) + step / 2.;
-                points.push((x, y));
+                points.push(Point::new(x, y, 0.));
             }
         }
         points

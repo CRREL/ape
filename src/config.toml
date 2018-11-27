@@ -5,3 +5,4 @@ maxy = 7365650
 step = 50
 threads = 4
 max_iterations = 100
+min_points_in_circle = 200
