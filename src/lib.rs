@@ -11,7 +11,6 @@ extern crate toml;
 use failure::Error;
 use nalgebra::Point3;
 use pbr::{MultiBar, Pipe, ProgressBar};
-use spade::rtree;
 use std::fs::File;
 use std::io::{BufReader, Read, Stdout};
 use std::path::Path;
@@ -23,7 +22,7 @@ use std::thread;
 use std::time::Duration;
 
 const PROGRESS_BAR_MAX_REFRESH_RATE_MS: u64 = 100;
-type RTree = rtree::RTree<Point3<f64>>;
+type RTree = spade::rtree::RTree<Point3<f64>>;
 
 pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
     config: Config,
