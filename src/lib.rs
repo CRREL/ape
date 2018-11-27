@@ -17,6 +17,7 @@ pub use config::Config;
 use failure::Error;
 use las::Reader;
 use nalgebra::Point3;
+use pbr::MultiBar;
 use std::path::Path;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
@@ -38,12 +39,18 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
     let moving = rtrees.pop().unwrap();
     let fixed = rtrees.pop().unwrap();
 
+    println!("");
     let sample_points = config.sample_points();
-    println!(
-        "\nCalculating velocities at {} points with {} workers.",
+    let mut multi_bar = MultiBar::new();
+    multi_bar.println(&format!(
+        "Calculating velocities at {} points using {} workers:",
         sample_points.len(),
         config.threads
-    );
+    ));
+    let mut progress_bar = multi_bar.create_bar(sample_points.len() as u64);
+    progress_bar.message("Overall progress: ");
+    multi_bar.println("");
+    multi_bar.println("Individual workers:");
     let sample_points = Arc::new(Mutex::new(sample_points));
     let fixed = Arc::new(fixed);
     let moving = Arc::new(moving);
@@ -53,6 +60,7 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
         let fixed = fixed.clone();
         let moving = moving.clone();
         let tx = tx.clone();
+        let _progress_bar = multi_bar.create_bar(config.max_iterations);
         thread::spawn(move || loop {
             let sample_point = {
                 let mut sample_points = sample_points.lock().unwrap();
@@ -67,9 +75,11 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
         });
     }
     drop(tx);
+    thread::spawn(move || multi_bar.listen());
     let mut cells = Vec::new();
     for cell in rx {
         cells.push(cell);
+        progress_bar.inc();
     }
     Ok(Ape { cells: cells })
 }

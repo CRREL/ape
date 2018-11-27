@@ -23,6 +23,9 @@ pub struct Config {
 
     /// The number of threads to use for CPD calculations.
     pub threads: usize,
+
+    /// The maximum number of iterations for each CPD run.
+    pub max_iterations: u64,
 }
 
 impl Config {

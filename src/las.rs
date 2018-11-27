@@ -79,6 +79,7 @@ impl Reader {
                     rtree.insert(point);
                     progress_bar.inc();
                 }
+                progress_bar.finish();
                 Ok(rtree)
             });
             handles.push(handle);
