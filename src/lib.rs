@@ -25,7 +25,6 @@ use pbr::MultiBar;
 use std::path::Path;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
-use std::time::Duration;
 
 /// Our version of the rtree.
 pub type RTree = spade::rtree::RTree<Point>;
@@ -57,9 +56,6 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
     ));
     let mut progress_bar = multi_bar.create_bar(sample_points.len() as u64);
     progress_bar.message("Overall progress: ");
-    progress_bar.set_max_refresh_rate(Some(Duration::from_millis(
-        PROGRESS_BAR_MAX_REFRESH_RATE_MS,
-    )));
     let sample_points = Arc::new(Mutex::new(sample_points));
     let fixed = Arc::new(fixed);
     let moving = Arc::new(moving);
