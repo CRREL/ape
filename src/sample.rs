@@ -22,6 +22,10 @@ pub enum Sample {
     Complete {
         x: f64,
         y: f64,
+        xmin: f64,
+        xmax: f64,
+        ymin: f64,
+        ymax: f64,
     },
 }
 
@@ -57,10 +61,18 @@ impl Sample {
         }
         let fixed = config.nearest_neighbors(fixed, &point);
         let moving = config.nearest_neighbors(moving, &point);
+        let xmin = fixed.column(0).amin().min(moving.column(0).amin());
+        let xmax = fixed.column(0).amax().max(moving.column(0).amax());
+        let ymin = fixed.column(1).amin().min(moving.column(1).amin());
+        let ymax = fixed.column(1).amax().max(moving.column(1).amax());
         //let run = cpd::rigid(&fixed, &moving)?;
         Ok(Sample::Complete {
             x: point.x(),
             y: point.y(),
+            xmin: xmin,
+            xmax: xmax,
+            ymin: ymin,
+            ymax: ymax,
         })
     }
 
