@@ -1,8 +1,10 @@
+use cpd::Matrix;
 use failure::Error;
+use nalgebra::U3;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use Point;
+use {Point, RTree};
 
 /// Processing engine configuration.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
@@ -28,8 +30,8 @@ pub struct Config {
     /// The maximum number of iterations for each CPD run.
     pub max_iterations: u64,
 
-    /// The minimum number of points in a circle of radius `step` around each sample points.
-    pub min_points_in_circle: usize,
+    /// The minimum number point density that will permit CPD to be run.
+    pub min_density: f64,
 
     /// The number of points to be used for the CPD calculation.
     pub num_points: usize,
@@ -76,5 +78,28 @@ impl Config {
             }
         }
         points
+    }
+
+    /// Returns the nearest neighbors from the provided rtree, centered around the point, as a
+    /// matrix.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ape::{Config, RTree, Point};
+    /// let config = Config::from_path("src/config.toml").unwrap();
+    /// let rtree = RTree::new();
+    /// let point = Point::new(1., 2., 3.);
+    /// let neighbors = config.nearest_neighbors(&rtree, &point);
+    /// ```
+    pub fn nearest_neighbors(&self, rtree: &RTree, point: &Point) -> Matrix<U3> {
+        let points = rtree.nearest_n_neighbors(point, self.num_points);
+        let mut matrix = Matrix::<U3>::zeros(points.len());
+        for (i, point) in points.iter().enumerate() {
+            matrix[(i, 0)] = point.x();
+            matrix[(i, 1)] = point.y();
+            matrix[(i, 2)] = point.z();
+        }
+        matrix
     }
 }

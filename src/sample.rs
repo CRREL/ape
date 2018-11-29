@@ -1,5 +1,3 @@
-use pbr::ProgressBar;
-use std::io::Write;
 use {Config, Point, RTree};
 
 /// A sample of the glacier's velocity.
@@ -11,13 +9,9 @@ pub struct Sample {
 
 impl Sample {
     /// Samples the data at the provided point.
-    pub fn new<W: Write>(
-        config: Config,
-        fixed: &RTree,
-        moving: &RTree,
-        point: Point,
-        progress_bar: &mut ProgressBar<W>,
-    ) -> Sample {
+    pub fn new(config: Config, fixed: &RTree, moving: &RTree, point: Point) -> Sample {
+        let fixed = config.nearest_neighbors(fixed, &point);
+        let moving = config.nearest_neighbors(moving, &point);
         Sample {
             x: point.x(),
             y: point.y(),

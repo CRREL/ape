@@ -25,8 +25,12 @@ use pbr::MultiBar;
 use std::path::Path;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
+use std::time::Duration;
 
-type RTree = spade::rtree::RTree<Point>;
+/// Our version of the rtree.
+pub type RTree = spade::rtree::RTree<Point>;
+
+const PROGRESS_BAR_MAX_REFRESH_RATE_MS: u64 = 100;
 
 pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
     config: Config,
@@ -53,8 +57,9 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
     ));
     let mut progress_bar = multi_bar.create_bar(sample_points.len() as u64);
     progress_bar.message("Overall progress: ");
-    multi_bar.println("");
-    multi_bar.println("Workers:");
+    progress_bar.set_max_refresh_rate(Some(Duration::from_millis(
+        PROGRESS_BAR_MAX_REFRESH_RATE_MS,
+    )));
     let sample_points = Arc::new(Mutex::new(sample_points));
     let fixed = Arc::new(fixed);
     let moving = Arc::new(moving);
@@ -64,7 +69,6 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
         let fixed = fixed.clone();
         let moving = moving.clone();
         let tx = tx.clone();
-        let mut progress_bar = multi_bar.create_bar(config.max_iterations);
 
         thread::spawn(move || loop {
             let sample_point = {
@@ -72,7 +76,7 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
                 sample_points.pop()
             };
             if let Some(sample_point) = sample_point {
-                let sample = Sample::new(config, &fixed, &moving, sample_point, &mut progress_bar);
+                let sample = Sample::new(config, &fixed, &moving, sample_point);
                 tx.send(sample).unwrap();
             } else {
                 return;
@@ -86,6 +90,7 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
         samples.push(sample);
         progress_bar.inc();
     }
+    progress_bar.finish();
     Ok(Ape { samples: samples })
 }
 

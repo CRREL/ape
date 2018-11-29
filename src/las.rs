@@ -5,9 +5,7 @@ use pbr::MultiBar;
 use std::path::{Path, PathBuf};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
-use {Point, RTree};
-
-const PROGRESS_BAR_MAX_REFRESH_RATE_MS: u64 = 100;
+use {Point, RTree, PROGRESS_BAR_MAX_REFRESH_RATE_MS};
 
 /// A multi-threaded las reader.
 ///
