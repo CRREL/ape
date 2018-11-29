@@ -13,16 +13,15 @@ pub mod las;
 
 mod config;
 mod point;
+mod sample;
 
 pub use config::Config;
 pub use point::Point;
+pub use sample::Sample;
 
-use cpd::Matrix;
 use failure::Error;
 use las::Reader;
-use nalgebra::U3;
 use pbr::MultiBar;
-use std::f64::consts::PI;
 use std::path::Path;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
@@ -60,7 +59,6 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
     let fixed = Arc::new(fixed);
     let moving = Arc::new(moving);
     let (tx, rx) = mpsc::channel();
-    let radius = config.step as f64 * config.step as f64;
     for _ in 0..config.threads {
         let sample_points = Arc::clone(&sample_points);
         let fixed = fixed.clone();
@@ -74,29 +72,8 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
                 sample_points.pop()
             };
             if let Some(sample_point) = sample_point {
-                progress_bar.message("Lookup in circle: ");
-                progress_bar.tick();
-                let fixed_density =
-                    fixed.lookup_in_circle(&sample_point, &radius).len() as f64 / (PI * radius);
-                let moving_density =
-                    moving.lookup_in_circle(&sample_point, &radius).len() as f64 / (PI * radius);
-
-                let run = if fixed_density > 0. && moving_density > 0. {
-                    let fixed =
-                        nearest_n_neighbors_as_matrix(&fixed, &sample_point, config.num_points);
-                    let moving =
-                        nearest_n_neighbors_as_matrix(&moving, &sample_point, config.num_points);
-                } else {
-                    None
-                };
-
-                let cell = Cell {
-                    x: sample_point.x(),
-                    y: sample_point.y(),
-                    fixed_density: fixed_density,
-                    moving_density: moving_density,
-                };
-                tx.send(cell).unwrap();
+                let sample = Sample::new(config, &fixed, &moving, sample_point, &mut progress_bar);
+                tx.send(sample).unwrap();
             } else {
                 return;
             }
@@ -104,27 +81,15 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
     }
     drop(tx);
     thread::spawn(move || multi_bar.listen());
-    let mut cells = Vec::new();
-    for cell in rx {
-        cells.push(cell);
+    let mut samples = Vec::new();
+    for sample in rx {
+        samples.push(sample);
         progress_bar.inc();
     }
-    Ok(Ape { cells: cells })
+    Ok(Ape { samples: samples })
 }
 
 #[derive(Debug, Serialize)]
 pub struct Ape {
-    cells: Vec<Cell>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct Cell {
-    x: f64,
-    y: f64,
-    fixed_density: f64,
-    moving_density: f64,
-}
-
-fn nearest_n_neighbors_as_matrix(rtree: &RTree, query_point: &Point, n: usize) -> Matrix<U3> {
-    unimplemented!()
+    samples: Vec<Sample>,
 }
