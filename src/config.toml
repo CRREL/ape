@@ -4,5 +4,5 @@ maxx = 545100
 maxy = 7365650
 step = 50
 threads = 4
-min_density = 0.1
+min_density = 1
 num_points = 5000

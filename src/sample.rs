@@ -22,7 +22,6 @@ pub enum Sample {
     Complete {
         x: f64,
         y: f64,
-        run: cpd::Run<U3, Transform<U3>>,
     },
 }
 
@@ -58,11 +57,17 @@ impl Sample {
         }
         let fixed = config.nearest_neighbors(fixed, &point);
         let moving = config.nearest_neighbors(moving, &point);
-        let run = cpd::rigid(&fixed, &moving)?;
+        //let run = cpd::rigid(&fixed, &moving)?;
         Ok(Sample::Complete {
             x: point.x(),
             y: point.y(),
-            run: run,
         })
+    }
+
+    pub fn has_no_points(&self) -> bool {
+        match *self {
+            Sample::NoPoints { .. } => true,
+            _ => false,
+        }
     }
 }
