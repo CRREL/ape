@@ -87,7 +87,7 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
     thread::spawn(move || multi_bar.listen());
     let mut samples = Vec::new();
     for sample in rx {
-        samples.push(sample);
+        samples.push(sample?);
         progress_bar.inc();
     }
     progress_bar.finish();

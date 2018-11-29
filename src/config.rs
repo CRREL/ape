@@ -27,9 +27,6 @@ pub struct Config {
     /// The number of threads to use for CPD calculations.
     pub threads: usize,
 
-    /// The maximum number of iterations for each CPD run.
-    pub max_iterations: u64,
-
     /// The minimum number point density that will permit CPD to be run.
     pub min_density: f64,
 
