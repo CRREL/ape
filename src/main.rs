@@ -37,6 +37,9 @@ fn main() {
 struct CsvSample {
     x: f64,
     y: f64,
+    z: f64,
+    v: f64,
+    vxy: f64,
     vx: f64,
     vy: f64,
     vz: f64,
@@ -47,6 +50,11 @@ impl From<Sample> for CsvSample {
         CsvSample {
             x: sample.x,
             y: sample.y,
+            z: sample.z,
+            v: (sample.velocity[0].powi(2)
+                + sample.velocity[1].powi(2)
+                + sample.velocity[2].powi(2)).sqrt(),
+            vxy: (sample.velocity[0].powi(2) + sample.velocity[1].powi(2)).sqrt(),
             vx: sample.velocity[0],
             vy: sample.velocity[1],
             vz: sample.velocity[2],

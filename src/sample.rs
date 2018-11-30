@@ -9,6 +9,7 @@ use {Config, Point, RTree};
 pub struct Sample {
     pub x: f64,
     pub y: f64,
+    pub z: f64,
     pub fixed_density: f64,
     pub moving_density: f64,
     pub xmin: f64,
@@ -42,9 +43,6 @@ impl Sample {
         let moving_density = config.density(moving, &point);
         let fixed = config.nearest_neighbors(fixed, &point);
         let moving = config.nearest_neighbors(moving, &point);
-        let mean = utils::mean(&moving);
-        let x = mean[0];
-        let y = mean[1];
         let mut runner = Runner::new();
         if let Some(max_iterations) = config.max_iterations {
             runner.max_iterations = max_iterations;
@@ -59,8 +57,9 @@ impl Sample {
         let run = run;
         let velocity = displacement * 3600. / duration.as_secs() as f64;
         Ok(Sample {
-            x: x,
-            y: y,
+            x: point.x(),
+            y: point.y(),
+            z: utils::mean(&moving)[2],
             fixed_density: fixed_density,
             moving_density: moving_density,
             xmin: xmin,
