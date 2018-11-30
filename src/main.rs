@@ -28,7 +28,9 @@ fn main() {
         let ape: Ape = serde_json::from_reader(infile).unwrap();
         let mut writer = Writer::from_path(matches.value_of("OUTFILE").unwrap()).unwrap();
         for sample in ape.samples {
-            writer.serialize(CsvSample::from(sample)).unwrap();
+            if sample.run.converged {
+                writer.serialize(CsvSample::from(sample)).unwrap();
+            }
         }
     }
 }
