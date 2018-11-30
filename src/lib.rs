@@ -18,7 +18,7 @@ mod sample;
 
 pub use config::Config;
 pub use point::Point;
-pub use sample::Sample;
+pub use sample::{LowDensitySample, Sample};
 
 use chrono::{DateTime, ParseResult, TimeZone, Utc};
 use failure::Error;
@@ -79,6 +79,30 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
 
     println!("");
     let mut progress_bar = ProgressBar::new(sample_points.len() as u64);
+    progress_bar.message("Culling low density samples: ");
+    let mut low_density_samples = Vec::new();
+    let sample_points: Vec<_> = sample_points
+        .into_iter()
+        .filter(|point| {
+            let fixed = config.density(&fixed, &point);
+            let moving = config.density(&moving, &point);
+            progress_bar.inc();
+            if fixed < config.min_density || moving < config.min_density {
+                low_density_samples.push(LowDensitySample {
+                    x: point.x(),
+                    y: point.y(),
+                    fixed: fixed,
+                    moving: moving,
+                });
+                false
+            } else {
+                true
+            }
+        }).collect();
+    progress_bar.finish();
+
+    println!("");
+    let mut progress_bar = ProgressBar::new(sample_points.len() as u64);
     progress_bar.message("Sampling velocities: ");
     let sample_points = Arc::new(Mutex::new(sample_points));
     let fixed = Arc::new(fixed);
@@ -111,12 +135,16 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
         progress_bar.inc();
     }
     progress_bar.finish();
-    Ok(Ape { samples: samples })
+    Ok(Ape {
+        samples: samples,
+        low_density_samples: low_density_samples,
+    })
 }
 
 #[derive(Debug, Serialize)]
 pub struct Ape {
     samples: Vec<Sample>,
+    low_density_samples: Vec<LowDensitySample>,
 }
 
 fn datetime_from_path<P: AsRef<Path>>(path: P) -> ParseResult<DateTime<Utc>> {

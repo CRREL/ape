@@ -7,23 +7,32 @@ use {Config, Point, RTree};
 /// A sample of the glacier's velocity.
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct Sample {
-    x: f64,
-    y: f64,
-    fixed_density: f64,
-    moving_density: f64,
-    cpd: Option<Cpd>,
+    pub x: f64,
+    pub y: f64,
+    pub fixed_density: f64,
+    pub moving_density: f64,
+    pub cpd: Option<Cpd>,
+}
+
+/// A sample of the glacier's velocity.
+#[derive(Default, Debug, Serialize, Deserialize)]
+pub struct LowDensitySample {
+    pub x: f64,
+    pub y: f64,
+    pub fixed: f64,
+    pub moving: f64,
 }
 
 /// A CPD run.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Cpd {
-    xmin: f64,
-    xmax: f64,
-    ymin: f64,
-    ymax: f64,
-    run: Run<U3, Transform<U3>>,
-    displacement: Point3<f64>,
-    velocity: Point3<f64>,
+    pub xmin: f64,
+    pub xmax: f64,
+    pub ymin: f64,
+    pub ymax: f64,
+    pub run: Run<U3, Transform<U3>>,
+    pub displacement: Point3<f64>,
+    pub velocity: Point3<f64>,
 }
 
 impl Sample {
@@ -42,9 +51,6 @@ impl Sample {
         };
         sample.fixed_density = config.density(fixed, &point);
         sample.moving_density = config.density(moving, &point);
-        if sample.fixed_density < config.min_density || sample.moving_density < config.min_density {
-            return Ok(sample);
-        }
         let fixed = config.nearest_neighbors(fixed, &point);
         let moving = config.nearest_neighbors(moving, &point);
         let mut runner = Runner::new();
