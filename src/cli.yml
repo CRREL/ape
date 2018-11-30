@@ -5,12 +5,12 @@ args:
         help: The configuration file for processing.
         required: true
         index: 1
-    - FIXED:
-        help: A las file holding the fixed points.
+    - MOVING:
+        help: A las file holding the moving points, usually the first scan.
         required: true
         index: 2
-    - MOVING:
-        help: A las file holding the moving points.
+    - FIXED:
+        help: A las file holding the fixed points, usually the second scan.
         required: true
         index: 3
     - OUTFILE:

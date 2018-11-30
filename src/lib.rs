@@ -1,3 +1,4 @@
+extern crate chrono;
 extern crate cpd;
 extern crate failure;
 extern crate las as las_rs;
@@ -19,6 +20,7 @@ pub use config::Config;
 pub use point::Point;
 pub use sample::Sample;
 
+use chrono::{DateTime, ParseResult, TimeZone, Utc};
 use failure::Error;
 use las::Reader;
 use pbr::MultiBar;
@@ -41,7 +43,17 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
         toml::ser::to_string_pretty(&config)?
     );
 
-    let reader = Reader::new().add_path(fixed).add_path(moving);
+    let first = datetime_from_path(&moving)?;
+    let second = datetime_from_path(&fixed)?;
+    let duration = (second - first).to_std()?;
+    println!(
+        "First scan (moving): {}\nSecond scan (fixed): {}\nTime elapsed between scans: {}s\n",
+        first,
+        second,
+        duration.as_secs()
+    );
+
+    let reader = Reader::new().add_path(moving).add_path(fixed);
     let mut rtrees = reader.read()?;
     let moving = rtrees.pop().unwrap();
     let fixed = rtrees.pop().unwrap();
@@ -72,7 +84,7 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
                 sample_points.pop()
             };
             if let Some(sample_point) = sample_point {
-                let sample = Sample::new(config, &fixed, &moving, sample_point);
+                let sample = Sample::new(config, &fixed, &moving, sample_point, duration);
                 tx.send(sample).unwrap();
             } else {
                 return;
@@ -96,4 +108,13 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
 #[derive(Debug, Serialize)]
 pub struct Ape {
     samples: Vec<Sample>,
+}
+
+fn datetime_from_path<P: AsRef<Path>>(path: P) -> ParseResult<DateTime<Utc>> {
+    let file_name = path
+        .as_ref()
+        .file_name()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_else(String::new);
+    Utc.datetime_from_str(&file_name, "%y%m%d_%H%M%S.las")
 }
