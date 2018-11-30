@@ -44,15 +44,14 @@ impl Sample {
         point: Point,
         duration: Duration,
     ) -> Result<Sample, Error> {
-        let mut sample = Sample {
-            x: point.x(),
-            y: point.y(),
-            ..Default::default()
-        };
+        let mut sample = Sample::default();
         sample.fixed_density = config.density(fixed, &point);
         sample.moving_density = config.density(moving, &point);
         let fixed = config.nearest_neighbors(fixed, &point);
         let moving = config.nearest_neighbors(moving, &point);
+        let mean = utils::mean(&moving);
+        sample.x = mean[0];
+        sample.y = mean[1];
         let mut runner = Runner::new();
         if let Some(max_iterations) = config.max_iterations {
             runner.max_iterations = max_iterations;
