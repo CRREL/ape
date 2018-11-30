@@ -142,10 +142,10 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
     })
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Ape {
-    samples: Vec<Sample>,
-    low_density_samples: Vec<LowDensitySample>,
+    pub samples: Vec<Sample>,
+    pub low_density_samples: Vec<LowDensitySample>,
 }
 
 fn datetime_from_path<P: AsRef<Path>>(path: P) -> ParseResult<DateTime<Utc>> {

@@ -1,9 +1,14 @@
 extern crate ape;
+extern crate csv;
 #[macro_use]
 extern crate clap;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 
-use ape::Config;
+use ape::{Ape, Config, Sample};
 use clap::App;
+use csv::Writer;
 use std::fs::File;
 
 fn main() {
@@ -18,5 +23,33 @@ fn main() {
             matches.value_of("MOVING").unwrap(),
         ).unwrap();
         serde_json::to_writer(outfile, &ape).unwrap();
+    } else if let Some(matches) = matches.subcommand_matches("to-csv") {
+        let infile = File::open(matches.value_of("INFILE").unwrap()).unwrap();
+        let ape: Ape = serde_json::from_reader(infile).unwrap();
+        let mut writer = Writer::from_path(matches.value_of("OUTFILE").unwrap()).unwrap();
+        for sample in ape.samples {
+            writer.serialize(CsvSample::from(sample)).unwrap();
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct CsvSample {
+    x: f64,
+    y: f64,
+    vx: f64,
+    vy: f64,
+    vz: f64,
+}
+
+impl From<Sample> for CsvSample {
+    fn from(sample: Sample) -> CsvSample {
+        CsvSample {
+            x: sample.x,
+            y: sample.y,
+            vx: sample.velocity[0],
+            vy: sample.velocity[1],
+            vz: sample.velocity[2],
+        }
     }
 }

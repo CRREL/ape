@@ -25,3 +25,7 @@ subcommands:
                 help: The JSON file to be handled.
                 required: true
                 index: 1
+            - OUTFILE:
+                help: The csv file to be created.
+                required: true
+                index: 2
