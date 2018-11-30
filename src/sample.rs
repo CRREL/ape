@@ -19,6 +19,7 @@ pub struct Sample {
     pub run: Run<U3, Transform<U3>>,
     pub displacement: Point3<f64>,
     pub velocity: Point3<f64>,
+    pub config: Config,
 }
 
 /// A sample of the glacier's velocity.
@@ -69,6 +70,7 @@ impl Sample {
             run: run,
             displacement: displacement,
             velocity: velocity,
+            config: config,
         })
     }
 }
