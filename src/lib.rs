@@ -84,7 +84,7 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
     let mut samples = Vec::new();
     for sample in rx {
         let sample = sample?;
-        if !sample.has_no_points() {
+        if let Some(sample) = sample {
             samples.push(sample);
         }
         progress_bar.inc();

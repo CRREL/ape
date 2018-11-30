@@ -32,6 +32,9 @@ pub struct Config {
 
     /// The number of points to be used for the CPD calculation.
     pub num_points: usize,
+
+    /// The maximum number of iterations to do of CPD.
+    pub max_iterations: Option<u64>,
 }
 
 impl Config {
