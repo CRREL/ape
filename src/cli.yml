@@ -1,19 +1,27 @@
 name: ape
 about: The ATLAS Processing Engine
-args:
-    - CONFIG:
-        help: The configuration file for processing.
-        required: true
-        index: 1
-    - MOVING:
-        help: A las file holding the moving points, usually the first scan.
-        required: true
-        index: 2
-    - FIXED:
-        help: A las file holding the fixed points, usually the second scan.
-        required: true
-        index: 3
-    - OUTFILE:
-        help: The output JSON file.
-        required: true
-        index: 4
+subcommands:
+    - sample:
+        args:
+            - CONFIG:
+                help: The configuration file for processing.
+                required: true
+                index: 1
+            - MOVING:
+                help: A las file holding the moving points, usually the first scan.
+                required: true
+                index: 2
+            - FIXED:
+                help: A las file holding the fixed points, usually the second scan.
+                required: true
+                index: 3
+            - OUTFILE:
+                help: The output JSON file.
+                required: true
+                index: 4
+    - to-csv:
+        args:
+            - INFILE:
+                help: The JSON file to be handled.
+                required: true
+                index: 1
