@@ -102,4 +102,19 @@ impl Config {
         }
         matrix
     }
+
+    /// Looks up the points in a circle around a point.
+    pub fn lookup_in_circle<'a>(&self, rtree: &'a RTree, point: &Point) -> Vec<&'a Point> {
+        rtree.lookup_in_circle(point, &self.radius2())
+    }
+
+    pub fn density(&self, rtree: &RTree, point: &Point) -> f64 {
+        use std::f64::consts::PI;
+        let area = PI * self.radius2();
+        self.lookup_in_circle(rtree, point).len() as f64 / area
+    }
+
+    fn radius2(&self) -> f64 {
+        self.step as f64 * self.step as f64
+    }
 }

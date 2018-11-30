@@ -23,7 +23,7 @@ pub use sample::Sample;
 use chrono::{DateTime, ParseResult, TimeZone, Utc};
 use failure::Error;
 use las::Reader;
-use pbr::MultiBar;
+use pbr::ProgressBar;
 use std::path::Path;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
@@ -58,16 +58,28 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
     let moving = rtrees.pop().unwrap();
     let fixed = rtrees.pop().unwrap();
 
-    println!("");
     let sample_points = config.sample_points();
-    let mut multi_bar = MultiBar::new();
-    multi_bar.println(&format!(
-        "Calculating velocities at {} points using {} workers:",
+    println!(
+        "\nCalculating velocities at {} points using {} workers:",
         sample_points.len(),
         config.threads
-    ));
-    let mut progress_bar = multi_bar.create_bar(sample_points.len() as u64);
-    progress_bar.message("Overall progress: ");
+    );
+
+    let mut progress_bar = ProgressBar::new(sample_points.len() as u64);
+    progress_bar.message("Culling empty samples: ");
+    let sample_points: Vec<_> = sample_points
+        .into_iter()
+        .filter(|point| {
+            let fixed = config.lookup_in_circle(&fixed, &point);
+            let moving = config.lookup_in_circle(&moving, &point);
+            progress_bar.inc();
+            !fixed.is_empty() && !moving.is_empty()
+        }).collect();
+    progress_bar.finish();
+
+    println!("");
+    let mut progress_bar = ProgressBar::new(sample_points.len() as u64);
+    progress_bar.message("Sampling velocities: ");
     let sample_points = Arc::new(Mutex::new(sample_points));
     let fixed = Arc::new(fixed);
     let moving = Arc::new(moving);
@@ -92,13 +104,10 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
         });
     }
     drop(tx);
-    thread::spawn(move || multi_bar.listen());
     let mut samples = Vec::new();
     for sample in rx {
         let sample = sample?;
-        if let Some(sample) = sample {
-            samples.push(sample);
-        }
+        samples.push(sample);
         progress_bar.inc();
     }
     progress_bar.finish();

@@ -1,7 +1,6 @@
 use cpd::{rigid::Transform, utils, Rigid, Run, Runner};
 use failure::Error;
 use nalgebra::{Point3, U3};
-use std::f64::consts::PI;
 use std::time::Duration;
 use {Config, Point, RTree};
 
@@ -35,23 +34,16 @@ impl Sample {
         moving: &RTree,
         point: Point,
         duration: Duration,
-    ) -> Result<Option<Sample>, Error> {
+    ) -> Result<Sample, Error> {
         let mut sample = Sample {
             x: point.x(),
             y: point.y(),
             ..Default::default()
         };
-        let radius2 = config.step as f64 * config.step as f64;
-        let fixed_in_circle = fixed.lookup_in_circle(&point, &radius2).len();
-        let moving_in_circle = fixed.lookup_in_circle(&point, &radius2).len();
-        if fixed_in_circle == 0 || moving_in_circle == 0 {
-            return Ok(None);
-        }
-        let area = PI * radius2;
-        sample.fixed_density = fixed_in_circle as f64 / area;
-        sample.moving_density = moving_in_circle as f64 / area;
+        sample.fixed_density = config.density(fixed, &point);
+        sample.moving_density = config.density(moving, &point);
         if sample.fixed_density < config.min_density || sample.moving_density < config.min_density {
-            return Ok(Some(sample));
+            return Ok(sample);
         }
         let fixed = config.nearest_neighbors(fixed, &point);
         let moving = config.nearest_neighbors(moving, &point);
@@ -71,6 +63,6 @@ impl Sample {
             displacement: displacement,
             velocity: displacement * 3600. / duration.as_secs() as f64,
         });
-        Ok(Some(sample))
+        Ok(sample)
     }
 }
