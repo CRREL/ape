@@ -55,8 +55,8 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
 
     let reader = Reader::new().add_path(moving).add_path(fixed);
     let mut rtrees = reader.read()?;
-    let moving = rtrees.pop().unwrap();
     let fixed = rtrees.pop().unwrap();
+    let moving = rtrees.pop().unwrap();
 
     let sample_points = config.sample_points();
     println!(
