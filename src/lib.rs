@@ -104,6 +104,7 @@ pub fn process<P: AsRef<Path>, Q: AsRef<Path>>(
     println!("");
     let mut progress_bar = ProgressBar::new(sample_points.len() as u64);
     progress_bar.message("Sampling velocities: ");
+    progress_bar.tick();
     let sample_points = Arc::new(Mutex::new(sample_points));
     let fixed = Arc::new(fixed);
     let moving = Arc::new(moving);
